@@ -22,7 +22,7 @@ namespace CignalRP {
         // URP保留来了对于UnlitShader的支持
         private static readonly ShaderTagId UnlitShaderTagId = new ShaderTagId("SRPDefaultUnlit");
 
-        public void Render(ScriptableRenderContext context, Camera camera) {
+        public void Render(ScriptableRenderContext context, Camera camera, bool useDynamicBatching, bool useGPUInstancing) {
             this.context = context;
             this.camera = camera;
 
@@ -41,7 +41,7 @@ namespace CignalRP {
             }
 
             this.PreDraw();
-            this.Draw();
+            this.Draw(useDynamicBatching, useGPUInstancing);
             this.PostDraw();
         }
 
@@ -110,29 +110,28 @@ namespace CignalRP {
             this.cmdBuffer.Clear();
         }
 
-        private void Draw() {
-            void DrawVisiableGeometry() {
-                // step1: 绘制不透明物体
-                var sortingSettings = new SortingSettings() {
-                    // todo 设置lightmode的pass以及物体排序规则， 是否可以利用GPU的hsr规避这里的排序？？？
-                    criteria = SortingCriteria.CommonOpaque
-                };
-                var drawingSettings = new DrawingSettings(UnlitShaderTagId, sortingSettings);
-                var filteringSetttings = new FilteringSettings(RenderQueueRange.opaque);
-                this.context.DrawRenderers(this.cullingResults, ref drawingSettings, ref filteringSetttings);
+        private void Draw(bool useDynamicBatching, bool useGPUInstancing) {
+            // step1: 绘制不透明物体
+            var sortingSettings = new SortingSettings() {
+                // todo 设置lightmode的pass以及物体排序规则， 是否可以利用GPU的hsr规避这里的排序？？？
+                criteria = SortingCriteria.CommonOpaque
+            };
+            var drawingSettings = new DrawingSettings(UnlitShaderTagId, sortingSettings) {
+                enableDynamicBatching = useDynamicBatching,
+                enableInstancing = useGPUInstancing
+            };
+            var filteringSetttings = new FilteringSettings(RenderQueueRange.opaque);
+            this.context.DrawRenderers(this.cullingResults, ref drawingSettings, ref filteringSetttings);
 
-                // step2: 绘制天空盒
-                // skybox和opaque进行ztest
-                this.context.DrawSkybox(this.camera);
+            // step2: 绘制天空盒
+            // skybox和opaque进行ztest
+            this.context.DrawSkybox(this.camera);
 
-                // step3: 绘制半透明物体
-                sortingSettings.criteria = SortingCriteria.CommonTransparent;
-                drawingSettings.sortingSettings = sortingSettings;
-                filteringSetttings.renderQueueRange = RenderQueueRange.transparent;
-                this.context.DrawRenderers(this.cullingResults, ref drawingSettings, ref filteringSetttings);
-            }
-
-            DrawVisiableGeometry();
+            // step3: 绘制半透明物体
+            sortingSettings.criteria = SortingCriteria.CommonTransparent;
+            drawingSettings.sortingSettings = sortingSettings;
+            filteringSetttings.renderQueueRange = RenderQueueRange.transparent;
+            this.context.DrawRenderers(this.cullingResults, ref drawingSettings, ref filteringSetttings);
 
 #if UNITY_EDITOR
             this.DrawUnsupported();

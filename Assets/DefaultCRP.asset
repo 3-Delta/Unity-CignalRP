@@ -12,3 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2e95ceb94b563544395592a3e984d4d9, type: 3}
   m_Name: DefaultCRP
   m_EditorClassIdentifier: 
+  useDynamicBatching: 0
+  useGPUInstancing: 1
+  useSRPBatcher: 1
