@@ -2,9 +2,8 @@
 #define CRP_LIT_PASS_INCLUDED
 
 #include "../ShaderLibrary/Common.hlsl"
-#include "../ShaderLibrary/Surface.hlsl"
-#include "../ShaderLibrary/Light.hlsl"
-#include "../ShaderLibrary/Lighting.hlsl"
+#include "../ShaderLibrary/Light/Surface.hlsl"
+#include "../ShaderLibrary/Light/Lighting.hlsl"
 
 TEXTURE2D(_BaseMap);
 SAMPLER(sampler_BaseMap);
@@ -28,6 +27,7 @@ struct Attributes {
 
 struct Varyings {
     float4 positionCS : SV_POSITION;
+    float3 positionWS : VAR_POSITION;
     float2 baseUV : VAR_BASE_UV;
 
     float3 normalWS : VAR_NORMAL;
@@ -43,6 +43,7 @@ Varyings LitPassVertex(Attributes input)
     UNITY_TRANSFER_INSTANCE_ID(input, output);
     float3 positionWS = TransformObjectToWorld(input.positionOS);
     output.positionCS = TransformWorldToHClip(positionWS);
+    output.positionWS = positionWS;
     output.normalWS = TransformObjectToWorldNormal(input.normalOS);
 
     float4 baseST = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseMap_ST);
@@ -60,13 +61,19 @@ float4 LitPassFragment(Varyings input) : SV_Target
     #if defined(_CLIPPING)
         clip(base.a - UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff));
     #endif
-    
+
+    // 填充surface
     Surface surface;
     surface.nromalWS = normalize(input.normalWS);
     surface.color = base.rgb;
     surface.alpha = base.a;
+    surface.viewDirWS = normalize(_WorldSpaceCameraPos - input.positionWS);
+    surface.metallic = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Metallic);
+    surface.smoothness = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Smoothness);
 
-    float3 color = GetLighting(surface);
+    // 填充BRDF
+    BRDF brdf = GetBRDF(surface);
+    float3 color = GetLighting(surface, brdf);
     return float4(color, surface.alpha);
 }
 

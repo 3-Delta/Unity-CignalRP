@@ -8,6 +8,8 @@ struct Surface
     float3 color;
     float alpha;
 
+    float3 viewDirWS;
+
     float metallic;
     float smoothness;
 };

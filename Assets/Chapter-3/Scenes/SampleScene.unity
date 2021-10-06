@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 705507994}
-  m_IndirectSpecularColor: {r: 0.18028346, g: 0.22571373, b: 0.30692244, a: 1}
+  m_IndirectSpecularColor: {r: 0.18028378, g: 0.22571412, b: 0.30692285, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -155,8 +155,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 1
-  smoothness: 0
+  metallic: 0
+  smoothness: 0.5
 --- !u!135 &7309334
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -375,8 +375,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 0.5
-  smoothness: 0.95
+  metallic: 0
+  smoothness: 0.5
 --- !u!135 &22851630
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -485,8 +485,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 0.25
-  smoothness: 0
+  metallic: 0
+  smoothness: 0.5
 --- !u!135 &32431153
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -609,8 +609,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 0.9339623, g: 0.4427239, b: 0.2599235, a: 1}
   alphaCutoff: 0.5
-  metallic: 1
-  smoothness: 0.514
+  metallic: 0
+  smoothness: 0.5
 --- !u!135 &37101065
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -815,8 +815,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 1
-  smoothness: 0.75
+  metallic: 0
+  smoothness: 0.5
 --- !u!135 &52713794
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -1159,8 +1159,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 0.5019608, g: 0.5019608, b: 0.5019608, a: 1}
   alphaCutoff: 0.5
-  metallic: 1
-  smoothness: 0.75
+  metallic: 0
+  smoothness: 0.5
 --- !u!135 &88794751
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -1906,8 +1906,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 1
-  smoothness: 0.95
+  metallic: 0
+  smoothness: 0.5
 --- !u!135 &196331419
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -2405,7 +2405,7 @@ MonoBehaviour:
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
   metallic: 0
-  smoothness: 0.95
+  smoothness: 0.5
 --- !u!135 &316887929
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -2638,7 +2638,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 0.5647059, g: 1, b: 0.5529412, a: 1}
   alphaCutoff: 0.5
-  metallic: 1
+  metallic: 0
   smoothness: 0.5
 --- !u!135 &323259608
 SphereCollider:
@@ -3274,7 +3274,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 0.99728084, g: 0.3066038, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 1
+  metallic: 0
   smoothness: 0.5
 --- !u!135 &520340824
 SphereCollider:
@@ -3835,8 +3835,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 0.5
-  smoothness: 0.75
+  metallic: 0
+  smoothness: 0.5
 --- !u!135 &600282207
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -3960,7 +3960,7 @@ MonoBehaviour:
   baseColor: {r: 0.5019608, g: 0.5019608, b: 0.5019608, a: 1}
   alphaCutoff: 0.5
   metallic: 0
-  smoothness: 0.75
+  smoothness: 0.5
 --- !u!135 &600787855
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -4459,7 +4459,7 @@ MonoBehaviour:
   baseColor: {r: 1, g: 1, b: 0.514151, a: 0.40392157}
   alphaCutoff: 0.5
   metallic: 0
-  smoothness: 0.769
+  smoothness: 0.5
 --- !u!135 &701596335
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -4646,8 +4646,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 0.5
-  smoothness: 0
+  metallic: 0
+  smoothness: 0.5
 --- !u!135 &729048515
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -4973,8 +4973,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 0, g: 0, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 0.504
-  smoothness: 0.584
+  metallic: 0
+  smoothness: 0.5
 --- !u!135 &787383950
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -5069,8 +5069,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 0.75
-  smoothness: 0.75
+  metallic: 0
+  smoothness: 0.5
 --- !u!135 &791172805
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -5179,8 +5179,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 0.25
-  smoothness: 0.75
+  metallic: 0
+  smoothness: 0.5
 --- !u!135 &796945589
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -5585,7 +5585,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 0.25
+  metallic: 0
   smoothness: 0.5
 --- !u!135 &846713117
 SphereCollider:
@@ -5695,8 +5695,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 0.25
-  smoothness: 0.25
+  metallic: 0
+  smoothness: 0.5
 --- !u!135 &873062830
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -5819,7 +5819,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 0.6698113, g: 0.57308406, b: 0.022116425, a: 1}
   alphaCutoff: 0.5
-  metallic: 1
+  metallic: 0
   smoothness: 0.5
 --- !u!135 &911755061
 SphereCollider:
@@ -6402,7 +6402,7 @@ MonoBehaviour:
   baseColor: {r: 0.7503069, g: 0.764151, b: 0, a: 1}
   alphaCutoff: 0.5
   metallic: 0
-  smoothness: 0.761
+  smoothness: 0.5
 --- !u!135 &1003962209
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -7263,7 +7263,7 @@ MonoBehaviour:
   baseColor: {r: 1, g: 1, b: 1, a: 0.019607844}
   alphaCutoff: 0.5
   metallic: 0
-  smoothness: 0.828
+  smoothness: 0.5
 --- !u!135 &1108336692
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -7778,8 +7778,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 0.514151, a: 1}
   alphaCutoff: 0.5
-  metallic: 1
-  smoothness: 0.836
+  metallic: 0
+  smoothness: 0.5
 --- !u!135 &1164367114
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -8317,8 +8317,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 0.75
-  smoothness: 0.25
+  metallic: 0
+  smoothness: 0.5
 --- !u!135 &1285237276
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -8746,8 +8746,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 0.75
-  smoothness: 0
+  metallic: 0
+  smoothness: 0.5
 --- !u!135 &1342113031
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -8962,8 +8962,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 0.75
-  smoothness: 0.95
+  metallic: 0
+  smoothness: 0.5
 --- !u!135 &1350214059
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -9182,8 +9182,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 0.25
-  smoothness: 0.95
+  metallic: 0
+  smoothness: 0.5
 --- !u!135 &1403531047
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -9605,8 +9605,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 1
-  smoothness: 0.25
+  metallic: 0
+  smoothness: 0.5
 --- !u!135 &1434458785
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -9994,7 +9994,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 1
+  metallic: 0
   smoothness: 0.5
 --- !u!135 &1480914597
 SphereCollider:
@@ -10379,7 +10379,7 @@ MonoBehaviour:
   baseColor: {r: 0.94605494, g: 1, b: 0.5529412, a: 0.6431373}
   alphaCutoff: 0.5
   metallic: 0
-  smoothness: 0.433
+  smoothness: 0.5
 --- !u!135 &1582566856
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -10508,7 +10508,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 0.75
+  metallic: 0
   smoothness: 0.5
 --- !u!135 &1629874935
 SphereCollider:
@@ -10633,7 +10633,7 @@ MonoBehaviour:
   baseColor: {r: 0.29003027, g: 0.2783019, b: 1, a: 1}
   alphaCutoff: 0.5
   metallic: 0
-  smoothness: 0.361
+  smoothness: 0.5
 --- !u!135 &1653347230
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -10915,7 +10915,7 @@ MonoBehaviour:
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
   metallic: 0
-  smoothness: 0
+  smoothness: 0.5
 --- !u!135 &1706533293
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -11228,7 +11228,7 @@ MonoBehaviour:
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
   metallic: 0
-  smoothness: 0.25
+  smoothness: 0.5
 --- !u!135 &1816690871
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -11352,7 +11352,7 @@ MonoBehaviour:
   baseColor: {r: 0.2520915, g: 0.9716981, b: 0.9716981, a: 1}
   alphaCutoff: 0.5
   metallic: 0
-  smoothness: 0.525
+  smoothness: 0.5
 --- !u!135 &1889711642
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -11961,7 +11961,7 @@ MonoBehaviour:
   baseColor: {r: 0.05128092, g: 0.4339623, b: 0, a: 1}
   alphaCutoff: 0.5
   metallic: 0
-  smoothness: 0.878
+  smoothness: 0.5
 --- !u!135 &1937510363
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -12057,7 +12057,7 @@ MonoBehaviour:
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
   metallic: 0
-  smoothness: 0.75
+  smoothness: 0.5
 --- !u!135 &1940481656
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -13268,7 +13268,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 0.5
+  metallic: 0
   smoothness: 0.5
 --- !u!135 &2088276785
 SphereCollider:
@@ -13444,8 +13444,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
   alphaCutoff: 0.5
-  metallic: 0.5
-  smoothness: 0.25
+  metallic: 0
+  smoothness: 0.5
 --- !u!135 &2117025721
 SphereCollider:
   m_ObjectHideFlags: 0
