@@ -14,6 +14,7 @@ namespace CignalRP {
         public Camera camera { get; protected set; } = null;
 
         private CullingResults cullingResults;
+        private Lighting lighting = new Lighting();
 
         // https://www.pianshen.com/article/7860291589/
         // Shader中不写 LightMode 时默认ShaderTagId值为“SRPDefaultUnlit”
@@ -21,6 +22,7 @@ namespace CignalRP {
         // URP以后并不是所有Pass都会执行，因为它预制了两个Pass所以，优先执行”UniversalForward”在执行”SrpDefaultUnlit”的Pass
         // URP保留来了对于UnlitShader的支持
         private static readonly ShaderTagId UnlitShaderTagId = new ShaderTagId("SRPDefaultUnlit");
+        private static readonly ShaderTagId LitShaderTagId = new ShaderTagId("CRPLit");
 
         public void Render(ScriptableRenderContext context, Camera camera, bool useDynamicBatching, bool useGPUInstancing) {
             this.context = context;
@@ -89,6 +91,9 @@ namespace CignalRP {
 
             this.cmdBuffer.BeginSample(this.profilerName);
             this.ExecuteCmdBuffer();
+            
+            // 设置光源,阴影信息
+            lighting.Setup(context, cullingResults);
         }
 
         private void PostDraw() {
@@ -120,6 +125,9 @@ namespace CignalRP {
                 enableDynamicBatching = useDynamicBatching,
                 enableInstancing = useGPUInstancing
             };
+            // 渲染CRP光照的pass
+            drawingSettings.SetShaderPassName(1, LitShaderTagId);
+            
             var filteringSetttings = new FilteringSettings(RenderQueueRange.opaque);
             this.context.DrawRenderers(this.cullingResults, ref drawingSettings, ref filteringSetttings);
 

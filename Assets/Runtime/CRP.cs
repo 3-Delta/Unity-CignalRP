@@ -11,7 +11,9 @@ namespace CignalRP {
         public CRP(bool useDynamicBatching, bool useGPUInstancing, bool useSRPBatcher) {
             this.useDynamicBatching = useDynamicBatching;
             this.useGPUInstancing = useGPUInstancing;
+            
             GraphicsSettings.useScriptableRenderPipelineBatching = useSRPBatcher;
+            GraphicsSettings.lightsUseLinearIntensity = true;
         }
 
         protected override void Render(ScriptableRenderContext context, Camera[] cameras) {

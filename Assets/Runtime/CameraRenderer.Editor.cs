@@ -15,6 +15,11 @@ namespace CignalRP {
             new ShaderTagId("Vertex"),
             new ShaderTagId("VertexLMRGBM"),
             new ShaderTagId("VertexLM"),
+            
+            // 《入门紧要》 p183
+            // new ShaderTagId("ForwardAdd"),
+            // new ShaderTagId("Deferred"),
+            // new ShaderTagId("PrepassFinal"),
         };
         private static Material ErrorMaterial;
 
