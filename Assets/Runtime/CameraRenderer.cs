@@ -1,5 +1,4 @@
 ﻿using System.Runtime.CompilerServices;
-
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -48,7 +47,6 @@ namespace CignalRP {
         }
 
         #region Cull
-
         // 是否有任意物体进入该camera的视野，得到剔除结果
         private bool TryCull(out CullingResults cullResults) {
             cullResults = default;
@@ -61,11 +59,9 @@ namespace CignalRP {
 
             return false;
         }
-
         #endregion
 
         #region Pre/Post Draw
-
         private void PreDraw() {
             // 设置vp矩阵给shader的unity_MatrixVP属性，在Framedebugger中选中某个dc可看
             // vp由CPU构造
@@ -91,7 +87,7 @@ namespace CignalRP {
 
             this.cmdBuffer.BeginSample(this.profilerName);
             this.ExecuteCmdBuffer();
-            
+
             // 设置光源,阴影信息
             lighting.Setup(context, cullingResults);
         }
@@ -103,11 +99,9 @@ namespace CignalRP {
             // submit之后才会开始绘制本桢
             this.context.Submit();
         }
-
         #endregion
 
         #region Draw
-
         // 内联优化
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ExecuteCmdBuffer() {
@@ -127,7 +121,7 @@ namespace CignalRP {
             };
             // 渲染CRP光照的pass
             drawingSettings.SetShaderPassName(1, LitShaderTagId);
-            
+
             var filteringSetttings = new FilteringSettings(RenderQueueRange.opaque);
             this.context.DrawRenderers(this.cullingResults, ref drawingSettings, ref filteringSetttings);
 
@@ -146,7 +140,6 @@ namespace CignalRP {
             this.DrawGizmos();
 #endif
         }
-
         #endregion
     }
 }

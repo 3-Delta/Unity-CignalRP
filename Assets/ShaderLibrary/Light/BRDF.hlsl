@@ -58,9 +58,9 @@ BRDF GetBRDF(Surface surface)
     BRDF brdf;
     float oneMinus = OneMinusReflectivity(surface.metallic);
     brdf.diffuse = surface.color * oneMinus;
+    
     // todo 为什么不是如下？ 非金属不贡献镜面反射
     // brdf.specular = lerp(MIN_REFLECTIVITY, 1, surface.metallic) * surface.color;
-    
     brdf.specular = lerp(MIN_REFLECTIVITY, surface.color, surface.metallic);
 
     float perceptualRoughness = PerceptualSmoothnessToPerceptualRoughness(surface.smoothness);
@@ -83,7 +83,19 @@ float SpecularStrength (Surface surface, BRDF brdf, Light light) {
 // 直接光
 float3 DirectBRDF (Surface surface, BRDF brdf, Light light) {
     float specularStrength = SpecularStrength(surface, brdf, light);
-    return specularStrength * brdf.specular + brdf.diffuse;
+    #if defined(_PREMULTIPLY_ALPHA)
+        // 为了解决变化alpha的时候,高光也跟随变化的情况
+        // diffuse必须PreMulAlpha，而且blendMode为one, other
+        // 假设一种极端情况，surface.alpha为0，此时如果需要高光显示，那么必然和colorbuffer混合的时候，不能使用srcAlpha作为混合因子，因为此时srcAlpha ==0,
+        // scrAlpha * surfaceColor + dstColor * (otherFactor) == dstColor * (otherFactor), 很显然，不能使用这个混合模式
+        // 为了确保srcColor一定被保留，必须one, other的混合模式
+        // 然后为了alpha只影响到diffuse, 而不影响specular, 可以在DirectBRDF函数中，将diffuse设置为跟随alpha变化，也就是*alpha
+        // 同时也说明，alpha其实作用只是blend, 没有其他任何作用
+        // 一般情况下感觉alpha起作用，完全是以为blendmode是srcalpha, 会导致srcColor被完全消除，所以感觉alpha起了作用
+        return specularStrength * brdf.specular + brdf.diffuse * surface.alpha;
+    #else
+        return specularStrength * brdf.specular + brdf.diffuse;
+    #endif
 }
 
 #endif

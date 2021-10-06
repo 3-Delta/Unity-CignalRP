@@ -54,6 +54,11 @@ namespace CignalRP {
             dirLightColors[index] = visibleLight.finalColor;
             // https://www.zhihu.com/people/kmac-3/answers
             // 右乘，矩阵每一列都是转换后坐标的基向量，所以这里矩阵第3列就是forward, 世界坐标的forward
+            // https://zhuanlan.zhihu.com/p/163360207
+            // https://www.zhihu.com/question/452040005/answer/1810783856
+            // 最后一列代表的是模型中心点的世界坐标
+            // localspace的光源的forward方向
+            // 方向：指向光源的方向，所以是负数
             dirLightWSDirections[index] = -visibleLight.localToWorldMatrix.GetColumn(2);
             
             // Light light = RenderSettings.sun;
