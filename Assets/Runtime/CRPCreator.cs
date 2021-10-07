@@ -9,8 +9,10 @@ namespace CignalRP {
         [SerializeField] private bool useGPUInstancing = true;
         [SerializeField] private bool useSRPBatcher = true;
 
+        [SerializeField] private ShadowSettings shadowSettings = default;
+
         protected override RenderPipeline CreatePipeline() {
-            return new CRP(useDynamicBatching, useGPUInstancing, useSRPBatcher);
+            return new CRP(useDynamicBatching, useGPUInstancing, useSRPBatcher, shadowSettings);
         }
     }
 }

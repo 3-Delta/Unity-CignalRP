@@ -45,5 +45,32 @@
             #include "LitPass.hlsl"
             ENDHLSL
         }
+        
+        Pass
+        {
+			Tags {
+				"LightMode" = "ShadowCaster"
+			}
+			
+			// 只写入depth，不写入color
+			// framedebugger观察到：
+			// blend one zero 也就是直接覆盖
+			ColorMask 0
+			// Blend One Zero
+						
+            HLSLPROGRAM
+            #pragma target 3.5
+            
+            #pragma shader_feature _CLIPPING
+            
+            // 支持gpu instance, 会有宏INSTANCE_ON定义
+            #pragma multi_compile_instancing
+
+            #pragma vertex ShadowCasterPassVertex
+            #pragma fragment ShadowCasterPassFragment
+            
+            #include "../ShaderLibrary/Light/ShadowCaster.hlsl"
+            ENDHLSL
+        }
     }
 }

@@ -23,7 +23,7 @@ namespace CignalRP {
         };
         private static Material ErrorMaterial;
 
-        private void DrawUnsupported() {
+        private void DrawUnsupported(ref ScriptableRenderContext context, ref CullingResults cullingResults) {
             if (ErrorMaterial == null) {
                 ErrorMaterial = new Material(Shader.Find("Hidden/InternalErrorShader"));
             }
@@ -39,13 +39,13 @@ namespace CignalRP {
             drawingSettings.overrideMaterial = ErrorMaterial;
 
             var filteringSetttings = FilteringSettings.defaultValue;
-            this.context.DrawRenderers(this.cullingResults, ref drawingSettings, ref filteringSetttings);
+            context.DrawRenderers(cullingResults, ref drawingSettings, ref filteringSetttings);
         }
 
-        private void DrawGizmos() {
+        private void DrawGizmos(ref ScriptableRenderContext context, ref CullingResults cullingResults) {
             if (Handles.ShouldRenderGizmos()) {
-                this.context.DrawGizmos(this.camera, GizmoSubset.PreImageEffects);
-                this.context.DrawGizmos(this.camera, GizmoSubset.PostImageEffects);
+                context.DrawGizmos(this.camera, GizmoSubset.PreImageEffects);
+                context.DrawGizmos(this.camera, GizmoSubset.PostImageEffects);
             }
         }
 
@@ -62,7 +62,7 @@ namespace CignalRP {
 
         private void Prepare() {
             Profiler.BeginSample("Editor Only");
-            this.cmdBuffer.name = this.profilerName = this.camera.name;
+            this.cmdBuffer.name = this.ProfileName = this.camera.name;
             Profiler.EndSample();
 
             this.PrepareForSceneWindow();

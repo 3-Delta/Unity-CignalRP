@@ -7,10 +7,13 @@ namespace CignalRP {
 
         private bool useDynamicBatching;
         private bool useGPUInstancing;
+
+        private ShadowSettings shadowSettings;
         
-        public CRP(bool useDynamicBatching, bool useGPUInstancing, bool useSRPBatcher) {
+        public CRP(bool useDynamicBatching, bool useGPUInstancing, bool useSRPBatcher, ShadowSettings shadowSettings) {
             this.useDynamicBatching = useDynamicBatching;
             this.useGPUInstancing = useGPUInstancing;
+            this.shadowSettings = shadowSettings;
             
             GraphicsSettings.useScriptableRenderPipelineBatching = useSRPBatcher;
             GraphicsSettings.lightsUseLinearIntensity = true;
@@ -18,7 +21,7 @@ namespace CignalRP {
 
         protected override void Render(ScriptableRenderContext context, Camera[] cameras) {
             for (int i = 0, length = cameras.Length; i < length; ++i) {
-                cameraRenderer.Render(context, cameras[i], useDynamicBatching, useGPUInstancing);
+                cameraRenderer.Render(ref context, cameras[i], useDynamicBatching, useGPUInstancing, shadowSettings);
             }
         }
     }

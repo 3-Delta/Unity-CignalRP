@@ -6,13 +6,11 @@ namespace CignalRP {
     // 负责单个相机的渲染
     public partial class CameraRenderer {
         public const string CmdBufferName = "CameraRender";
-        public string profilerName { get; protected set; } = CmdBufferName;
+        public string ProfileName { get; protected set; } = CmdBufferName;
         public CommandBuffer cmdBuffer { get; protected set; } = new CommandBuffer();
 
-        public ScriptableRenderContext context { get; protected set; }
         public Camera camera { get; protected set; } = null;
 
-        private CullingResults cullingResults;
         private Lighting lighting = new Lighting();
 
         // https://www.pianshen.com/article/7860291589/
@@ -23,8 +21,7 @@ namespace CignalRP {
         private static readonly ShaderTagId UnlitShaderTagId = new ShaderTagId("SRPDefaultUnlit");
         private static readonly ShaderTagId LitShaderTagId = new ShaderTagId("CRPLit");
 
-        public void Render(ScriptableRenderContext context, Camera camera, bool useDynamicBatching, bool useGPUInstancing) {
-            this.context = context;
+        public void Render(ref ScriptableRenderContext context, Camera camera, bool useDynamicBatching, bool useGPUInstancing, ShadowSettings shadowSettings) {
             this.camera = camera;
 
             if (camera.TryGetComponent(out CameraRendererIni cameraIni)) {
@@ -37,23 +34,24 @@ namespace CignalRP {
             this.Prepare();
 #endif
 
-            if (!this.TryCull(out this.cullingResults)) {
+            if (!this.TryCull(ref context, out CullingResults cullingResults, shadowSettings)) {
                 return;
             }
 
-            this.PreDraw();
-            this.Draw(useDynamicBatching, useGPUInstancing);
-            this.PostDraw();
+            this.PreDraw(ref context, ref cullingResults, shadowSettings);
+            this.Draw(ref context, ref cullingResults, useDynamicBatching, useGPUInstancing);
+            this.PostDraw(ref context);
         }
 
         #region Cull
         // 是否有任意物体进入该camera的视野，得到剔除结果
-        private bool TryCull(out CullingResults cullResults) {
+        private bool TryCull(ref ScriptableRenderContext context, out CullingResults cullResults, ShadowSettings shadowSettings) {
             cullResults = default;
             // 以物体为基准，剔除视野之外的物体，应该没有执行遮挡剔除
             // layer裁减等操作
             if (this.camera.TryGetCullingParameters(out ScriptableCullingParameters parameters)) {
-                cullResults = this.context.Cull(ref parameters);
+                parameters.shadowDistance = Mathf.Min(shadowSettings.maxShadowDistance, camera.farClipPlane);
+                cullResults = context.Cull(ref parameters);
                 return true;
             }
 
@@ -62,10 +60,16 @@ namespace CignalRP {
         #endregion
 
         #region Pre/Post Draw
-        private void PreDraw() {
+        private void PreDraw(ref ScriptableRenderContext context, ref CullingResults cullingResults, ShadowSettings shadowSettings) {
+            this.cmdBuffer.BeginSample(this.ProfileName);
+            CameraRenderer.ExecuteCmdBuffer(ref context, this.cmdBuffer);
+            
+            // 设置光源,阴影信息, 内含shadowmap的渲染， 所以需要在正式的相机参数等之前先渲染， 否则放在函数最尾巴，则渲染为一片黑色
+            lighting.Setup(ref context, ref cullingResults, shadowSettings);
+            
             // 设置vp矩阵给shader的unity_MatrixVP属性，在Framedebugger中选中某个dc可看
             // vp由CPU构造
-            this.context.SetupCameraProperties(this.camera);
+            context.SetupCameraProperties(this.camera);
 
             // 有时候rendertarget是rt,那么怎么控制这个	ClearRenderTarget是对于camera生效，还是对于rt生效呢？
             // 猜测应该是向上查找最近的一个rendertarget，也就是setrendertarget, 因为这里没有明显的设置过rendertarget，所以就当是framebuffer
@@ -85,31 +89,32 @@ namespace CignalRP {
             // ClearRendererTarget会自动收缩在CmdBufferName下面
             this.cmdBuffer.ClearRenderTarget(clearDepth, clearColor, bgColor);
 
-            this.cmdBuffer.BeginSample(this.profilerName);
-            this.ExecuteCmdBuffer();
-
-            // 设置光源,阴影信息
-            lighting.Setup(context, cullingResults);
+            this.cmdBuffer.BeginSample(this.ProfileName);
+            CameraRenderer.ExecuteCmdBuffer(ref context, this.cmdBuffer);
+            
+            this.cmdBuffer.EndSample(this.ProfileName);
         }
 
-        private void PostDraw() {
-            this.cmdBuffer.EndSample(this.profilerName);
-            this.ExecuteCmdBuffer();
+        private void PostDraw(ref ScriptableRenderContext context) {
+            this.cmdBuffer.EndSample(this.ProfileName);
+            CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
 
+            lighting.Clean(ref context);
+            
             // submit之后才会开始绘制本桢
-            this.context.Submit();
+            context.Submit();
         }
         #endregion
 
         #region Draw
         // 内联优化
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void ExecuteCmdBuffer() {
-            this.context.ExecuteCommandBuffer(this.cmdBuffer);
-            this.cmdBuffer.Clear();
+        public static void ExecuteCmdBuffer(ref ScriptableRenderContext context, CommandBuffer cmdBuffer) {
+            context.ExecuteCommandBuffer(cmdBuffer);
+            cmdBuffer.Clear();
         }
 
-        private void Draw(bool useDynamicBatching, bool useGPUInstancing) {
+        private void Draw(ref ScriptableRenderContext context, ref CullingResults cullingResults, bool useDynamicBatching, bool useGPUInstancing) {
             // step1: 绘制不透明物体
             var sortingSettings = new SortingSettings() {
                 // todo 设置lightmode的pass以及物体排序规则， 是否可以利用GPU的hsr规避这里的排序？？？
@@ -123,21 +128,21 @@ namespace CignalRP {
             drawingSettings.SetShaderPassName(1, LitShaderTagId);
 
             var filteringSetttings = new FilteringSettings(RenderQueueRange.opaque);
-            this.context.DrawRenderers(this.cullingResults, ref drawingSettings, ref filteringSetttings);
+            context.DrawRenderers(cullingResults, ref drawingSettings, ref filteringSetttings);
 
             // step2: 绘制天空盒
             // skybox和opaque进行ztest
-            this.context.DrawSkybox(this.camera);
+            context.DrawSkybox(this.camera);
 
             // step3: 绘制半透明物体
             sortingSettings.criteria = SortingCriteria.CommonTransparent;
             drawingSettings.sortingSettings = sortingSettings;
             filteringSetttings.renderQueueRange = RenderQueueRange.transparent;
-            this.context.DrawRenderers(this.cullingResults, ref drawingSettings, ref filteringSetttings);
+            context.DrawRenderers(cullingResults, ref drawingSettings, ref filteringSetttings);
 
 #if UNITY_EDITOR
-            this.DrawUnsupported();
-            this.DrawGizmos();
+            this.DrawUnsupported(ref context, ref cullingResults);
+            this.DrawGizmos(ref context, ref cullingResults);
 #endif
         }
         #endregion
