@@ -9,6 +9,9 @@ namespace CignalRP {
         private CommandBuffer cmdBuffer = new CommandBuffer() {
             name = ProfileName
         };
+        
+        private ScriptableRenderContext context;
+        private CullingResults cullingResults;
 
         public static readonly int dirLightCountId = Shader.PropertyToID("_DirectionalLightCount");
         public static readonly int dirLightColorsId = Shader.PropertyToID("_DirectionalLightColors");
@@ -17,32 +20,35 @@ namespace CignalRP {
         public const int MAX_DIR_LIGHT_COUNT = 4;
         public static readonly Vector4[] dirLightColors = new Vector4[MAX_DIR_LIGHT_COUNT];
         public static readonly Vector4[] dirLightWSDirections = new Vector4[MAX_DIR_LIGHT_COUNT];
-
+        
         private Shadow shadow = new Shadow();
 
         public void Setup(ref ScriptableRenderContext context, ref CullingResults cullingResults, ShadowSettings shadowSettings) {
+            this.context = context;
+            this.cullingResults = cullingResults;
+            
             cmdBuffer.BeginSample(ProfileName);
 
             shadow.Setup(ref context, ref cullingResults, shadowSettings);
-            SetLights(ref context, ref cullingResults);
-            shadow.Render(ref context, ref cullingResults, shadowSettings);
+            SetLights();
+            shadow.Render();
             
             cmdBuffer.EndSample(ProfileName);
 
             CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
         }
 
-        public void Clean(ref ScriptableRenderContext context) {
-            shadow.Clean(ref context);
+        public void Clean() {
+            shadow.Clean();
         }
 
-        private void SetLights(ref ScriptableRenderContext context, ref CullingResults cullingResults) {
+        private void SetLights() {
             NativeArray<VisibleLight> visibleLights = cullingResults.visibleLights;
             int dirLightCount = 0;
             for (int i = 0; i < visibleLights.Length; ++i) {
                 VisibleLight curVisibleLight = visibleLights[i];
                 if (curVisibleLight.lightType == LightType.Directional) {
-                    SetupDirectionalLights(ref context, ref cullingResults, dirLightCount++, ref curVisibleLight);
+                    SetupDirectionalLights(dirLightCount++, ref curVisibleLight);
                     if (dirLightCount >= MAX_DIR_LIGHT_COUNT) {
                         break;
                     }
@@ -54,7 +60,7 @@ namespace CignalRP {
             cmdBuffer.SetGlobalVectorArray(dirLightDirectionsId, dirLightWSDirections);
         }
 
-        private void SetupDirectionalLights(ref ScriptableRenderContext context, ref CullingResults cullingResults, int index, ref VisibleLight visibleLight) {
+        private void SetupDirectionalLights(int index, ref VisibleLight visibleLight) {
             // finalColor = light.color.linear * light.intensity;
             dirLightColors[index] = visibleLight.finalColor;
             // https://www.zhihu.com/people/kmac-3/answers
@@ -68,7 +74,7 @@ namespace CignalRP {
 
             // 保留Light阴影设置数据，得到可投射shadow的light数据
             // index是dirLightWSDirections的下标
-            shadow.ReserveDirectionalShadows(ref context, ref cullingResults, visibleLight.light, index);
+            shadow.ReserveDirectionalShadows(visibleLight.light, index);
             // Light light = RenderSettings.sun;
             // cmdBuffer.SetGlobalVector(dirLightColorId, light.color.linear * light.intensity);
             // cmdBuffer.SetGlobalVector(dirLightDirectionId, -light.transform.forward);

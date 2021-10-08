@@ -12,6 +12,8 @@ namespace CignalRP {
         public Camera camera { get; protected set; } = null;
 
         private Lighting lighting = new Lighting();
+        private ScriptableRenderContext context;
+        private CullingResults cullingResults;
 
         // https://www.pianshen.com/article/7860291589/
         // Shader中不写 LightMode 时默认ShaderTagId值为“SRPDefaultUnlit”
@@ -23,6 +25,7 @@ namespace CignalRP {
 
         public void Render(ref ScriptableRenderContext context, Camera camera, bool useDynamicBatching, bool useGPUInstancing, ShadowSettings shadowSettings) {
             this.camera = camera;
+            this.context = context;
 
             if (camera.TryGetComponent(out CameraRendererIni cameraIni)) {
                 if (Time.frameCount % cameraIni.rendererFrequency != 0) {
@@ -34,18 +37,18 @@ namespace CignalRP {
             this.Prepare();
 #endif
 
-            if (!this.TryCull(ref context, out CullingResults cullingResults, shadowSettings)) {
+            if (!this.TryCull(out cullingResults, shadowSettings)) {
                 return;
             }
 
-            this.PreDraw(ref context, ref cullingResults, shadowSettings);
-            this.Draw(ref context, ref cullingResults, useDynamicBatching, useGPUInstancing);
-            this.PostDraw(ref context);
+            this.PreDraw(shadowSettings);
+            this.Draw(useDynamicBatching, useGPUInstancing);
+            this.PostDraw();
         }
 
         #region Cull
         // 是否有任意物体进入该camera的视野，得到剔除结果
-        private bool TryCull(ref ScriptableRenderContext context, out CullingResults cullResults, ShadowSettings shadowSettings) {
+        private bool TryCull(out CullingResults cullResults, ShadowSettings shadowSettings) {
             cullResults = default;
             // 以物体为基准，剔除视野之外的物体，应该没有执行遮挡剔除
             // layer裁减等操作
@@ -60,7 +63,7 @@ namespace CignalRP {
         #endregion
 
         #region Pre/Post Draw
-        private void PreDraw(ref ScriptableRenderContext context, ref CullingResults cullingResults, ShadowSettings shadowSettings) {
+        private void PreDraw(ShadowSettings shadowSettings) {
             this.cmdBuffer.BeginSample(this.ProfileName);
             CameraRenderer.ExecuteCmdBuffer(ref context, this.cmdBuffer);
             
@@ -95,11 +98,11 @@ namespace CignalRP {
             this.cmdBuffer.EndSample(this.ProfileName);
         }
 
-        private void PostDraw(ref ScriptableRenderContext context) {
+        private void PostDraw() {
             this.cmdBuffer.EndSample(this.ProfileName);
             CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
 
-            lighting.Clean(ref context);
+            lighting.Clean();
             
             // submit之后才会开始绘制本桢
             context.Submit();
@@ -114,7 +117,7 @@ namespace CignalRP {
             cmdBuffer.Clear();
         }
 
-        private void Draw(ref ScriptableRenderContext context, ref CullingResults cullingResults, bool useDynamicBatching, bool useGPUInstancing) {
+        private void Draw(bool useDynamicBatching, bool useGPUInstancing) {
             // step1: 绘制不透明物体
             var sortingSettings = new SortingSettings() {
                 // todo 设置lightmode的pass以及物体排序规则， 是否可以利用GPU的hsr规避这里的排序？？？
@@ -141,8 +144,8 @@ namespace CignalRP {
             context.DrawRenderers(cullingResults, ref drawingSettings, ref filteringSetttings);
 
 #if UNITY_EDITOR
-            this.DrawUnsupported(ref context, ref cullingResults);
-            this.DrawGizmos(ref context, ref cullingResults);
+            this.DrawUnsupported();
+            this.DrawGizmos();
 #endif
         }
         #endregion

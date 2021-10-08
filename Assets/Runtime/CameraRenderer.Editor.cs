@@ -23,7 +23,7 @@ namespace CignalRP {
         };
         private static Material ErrorMaterial;
 
-        private void DrawUnsupported(ref ScriptableRenderContext context, ref CullingResults cullingResults) {
+        private void DrawUnsupported() {
             if (ErrorMaterial == null) {
                 ErrorMaterial = new Material(Shader.Find("Hidden/InternalErrorShader"));
             }
@@ -42,7 +42,7 @@ namespace CignalRP {
             context.DrawRenderers(cullingResults, ref drawingSettings, ref filteringSetttings);
         }
 
-        private void DrawGizmos(ref ScriptableRenderContext context, ref CullingResults cullingResults) {
+        private void DrawGizmos() {
             if (Handles.ShouldRenderGizmos()) {
                 context.DrawGizmos(this.camera, GizmoSubset.PreImageEffects);
                 context.DrawGizmos(this.camera, GizmoSubset.PostImageEffects);

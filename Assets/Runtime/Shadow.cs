@@ -14,6 +14,10 @@ namespace CignalRP {
             name = ProfileName
         };
         
+        private ScriptableRenderContext context;
+        private CullingResults cullingResults;
+        private ShadowSettings shadowSettings;
+        
         public static readonly int dirLightShadowAtlasId = Shader.PropertyToID("_DirectionalLightShadowAtlas");
 
         // 最大投射阴影的平行光数量
@@ -23,10 +27,14 @@ namespace CignalRP {
         private ShadowedDirectionalLight[] shadowedDirectionalLights = new ShadowedDirectionalLight[MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT];
         
         public void Setup(ref ScriptableRenderContext context, ref CullingResults cullingResults, ShadowSettings shadowSettings) {
+            this.context = context;
+            this.cullingResults = cullingResults;
+            this.shadowSettings = shadowSettings;
+            
             shadowedDirectionalLightCount = 0;
         }
 
-        public void Render(ref ScriptableRenderContext context, ref CullingResults cullingResults, ShadowSettings shadowSettings) {
+        public void Render() {
             if (shadowedDirectionalLightCount > 0) {
                 RenderDirectionalShadow(ref context, ref cullingResults, shadowSettings);
             }
@@ -68,12 +76,12 @@ namespace CignalRP {
             context.DrawShadows(ref shadowDrawSettings);
         }
 
-        public void Clean(ref ScriptableRenderContext context) {
+        public void Clean() {
             cmdBuffer.ReleaseTemporaryRT(dirLightShadowAtlasId);
             CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
         }
 
-        public void ReserveDirectionalShadows(ref ScriptableRenderContext context, ref CullingResults cullingResults, Light light, int visibleLightIndex) {
+        public void ReserveDirectionalShadows(Light light, int visibleLightIndex) {
             if (shadowedDirectionalLightCount < MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT &&
                 light.shadows != LightShadows.None && light.shadowStrength > 0f &&
                 cullingResults.GetShadowCasterBounds(visibleLightIndex, out Bounds bounds)) {
