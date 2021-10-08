@@ -7,6 +7,7 @@
 
 // cbuffer的一些限制， 这个cbuffer中的参数，一般urp中没有显式传递，查找不到
 // https://zhuanlan.zhihu.com/p/137455866
+// https://zhuanlan.zhihu.com/p/378781638查看所有的内置的PerDraw属性
 CBUFFER_START(UnityPerDraw)
 	float4x4 unity_ObjectToWorld;
 	float4x4 unity_WorldToObject;
