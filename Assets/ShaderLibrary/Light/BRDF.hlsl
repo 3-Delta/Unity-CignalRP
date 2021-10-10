@@ -81,6 +81,12 @@ float SpecularStrength (Surface surface, BRDF brdf, Light light) {
 }
 
 // 直接光
+// https://zhuanlan.zhihu.com/p/393174880
+// https://zhuanlan.zhihu.com/p/152226698
+// brdf = F(l, v) = KdFd + KsFs
+// Fd, Fs分别为漫反射,高光反射brdf函数，Kd, Ks分别是漫反射，高光反射的反射系数，因为能量守恒，Kd + Ks < 1, 因为有部分被吸收了
+// 其实pbr中，这里粗糙度其实影响的是 法线分布函数， 这里全部究极到了高光强度这个概念中
+// 这里使用的brdf是Minimalist CookTorrance BRDF的一种变体
 float3 DirectBRDF (Surface surface, BRDF brdf, Light light) {
     float specularStrength = SpecularStrength(surface, brdf, light);
     #if defined(_PREMULTIPLY_ALPHA)

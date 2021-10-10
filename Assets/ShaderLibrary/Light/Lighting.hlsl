@@ -5,6 +5,7 @@
 #include "Light.hlsl"
 #include "BRDF.hlsl"
 
+// https://zhuanlan.zhihu.com/p/393174880
 float3 IncomingLight(Surface surface, Light light)
 {
     float dotNL = dot(surface.nromalWS, light.directionWS);
@@ -14,10 +15,11 @@ float3 IncomingLight(Surface surface, Light light)
 
 float3 GetLighting(Surface surface, BRDF brdf, Light light)
 {
-    float3 il = IncomingLight(surface, light);
+    float3 incomeLight = IncomingLight(surface, light);
     // 输入光源 * brdf系数
-    float3 diffuseAndSpecular = DirectBRDF(surface, brdf, light);
-    return il * diffuseAndSpecular;
+    // 最常用的BRDF公式为Cook-Torrance,
+    float3 cookTorrance = DirectBRDF(surface, brdf, light);
+    return incomeLight * cookTorrance;
 }
 
 float3 GetLighting(Surface surface, BRDF brdf)
