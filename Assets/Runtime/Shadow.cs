@@ -85,7 +85,7 @@ namespace CignalRP {
             int tileIndex = lightIndex;
             Vector2 viewport = SetTileViewport(tileIndex, countPerLine, tileSize);
             // 得到world->light的矩阵， 此时camera在light位置
-            dirShadowMatrices[lightIndex] = ConvertToAtlasMatrix(projMatrix, viewMatrix, viewport, countPerLine, tileSize);
+            dirShadowMatrices[lightIndex] = ConvertToAtlasMatrix(projMatrix, viewMatrix, viewport, countPerLine);
             cmdBuffer.SetViewProjectionMatrices(viewMatrix, projMatrix);
             CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
             context.DrawShadows(ref shadowDrawSettings);
@@ -93,20 +93,19 @@ namespace CignalRP {
 
         // vp矩阵将positionWS转换到ndc中， 这个矩阵将positionWS转换到size=1的CUBE区域中的某个tile块中
         // 也可以理解为转换到shadowspace
-        private Matrix4x4 ConvertToAtlasMatrix(Matrix4x4 projMatrix, Matrix4x4 viewMatrix, Vector2 offset, int countPerLine, int tileSize) {
+        private Matrix4x4 ConvertToAtlasMatrix(Matrix4x4 projMatrix, Matrix4x4 viewMatrix, Vector2 offset, int countPerLine) {
             Matrix4x4 worldToShadow = GetShadowTransform(projMatrix, viewMatrix);
 
             Matrix4x4 sliceTransform = Matrix4x4.identity;
-            float oneOverAtlasWidth = 1.0f / countPerLine;
-            float oneOverAtlasHeight = 1.0f / countPerLine;
-
-            // 缩放
-            sliceTransform.m00 = tileSize * oneOverAtlasWidth;
-            sliceTransform.m11 = tileSize * oneOverAtlasHeight;
+            // 因为shadowmap都是矩形,不存在长方形
+            float scale = 1.0f / countPerLine;
+            // 缩放, 将[0, 1]的立方体控制为[0, scale]的立方体
+            sliceTransform.m00 = scale;
+            sliceTransform.m11 = scale;
 
             // 平移
-            sliceTransform.m03 = offset.x * oneOverAtlasWidth;
-            sliceTransform.m13 = offset.y * oneOverAtlasHeight;
+            sliceTransform.m03 = offset.x * scale;
+            sliceTransform.m13 = offset.y * scale;
 
             return sliceTransform * worldToShadow;
         }
@@ -133,9 +132,9 @@ namespace CignalRP {
 
             // 控制平移 将左下角点位置[-0.5, -0.5, -0.5] 平移到 [0, 0, 0]处
             textureScaleAndBias.m03 = 0.5f;
-            textureScaleAndBias.m23 = 0.5f;
             textureScaleAndBias.m13 = 0.5f;
-
+            textureScaleAndBias.m23 = 0.5f;
+           
             // Apply texture scale and offset to save a MAD in shader.
             return textureScaleAndBias * worldToShadow;
         }
