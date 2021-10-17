@@ -8,7 +8,9 @@
 // https://zhuanlan.zhihu.com/p/393174880
 float3 IncomingLight(Surface surface, Light light)
 {
-    float dotNL = dot(surface.nromalWS, light.directionWS);
+    float dotNL = dot(surface.normalWS, light.directionWS);
+    // 光源的衰减和阴影的衰减合成一起 [light.shadowAttenuation; 如果在阴影中,为0,否则大于0 小于1]
+    dotNL *= light.shadowAttenuation;
     dotNL = saturate(dotNL);
     return dotNL * light.color;
 }
@@ -28,7 +30,7 @@ float3 GetLighting(Surface surface, BRDF brdf)
     // 一个片元受到多个光照影响，就是color叠加
     for(int i = 0, dirLightCount = GetDirectionalLightCount(); i < dirLightCount; ++ i)
     {
-        color += GetLighting(surface, brdf, GetDirectionalLight(i));
+        color += GetLighting(surface, brdf, GetDirectionalLight(i, surface));
     }
     return color;
 }

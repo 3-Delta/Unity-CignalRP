@@ -156,15 +156,18 @@ namespace CignalRP {
             CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
         }
 
-        public void ReserveDirectionalShadows(Light light, int visibleLightIndex) {
+        public Vector2 ReserveDirectionalShadows(Light light, int visibleLightIndex) {
             if (shadowedDirectionalLightCount < MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT &&
                 light.shadows != LightShadows.None && light.shadowStrength > 0f &&
                 cullingResults.GetShadowCasterBounds(visibleLightIndex, out Bounds bounds)) {
                 // 光源设置为投射阴影，但是没有物件接收阴影，不需要shadowmap
-                shadowedDirectionalLights[shadowedDirectionalLightCount++] = new ShadowedDirectionalLight() {
+                shadowedDirectionalLights[shadowedDirectionalLightCount] = new ShadowedDirectionalLight() {
                     visibleLightIndex = visibleLightIndex,
                 };
+
+                return new Vector2(light.shadowStrength, shadowedDirectionalLightCount++);
             }
+            return Vector2.zero;
         }
     }
 }

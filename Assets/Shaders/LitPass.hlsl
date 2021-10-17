@@ -64,7 +64,8 @@ float4 LitPassFragment(Varyings input) : SV_Target
 
     // 填充surface
     Surface surface;
-    surface.nromalWS = normalize(input.normalWS);
+    surface.positionWS = input.positionWS;
+    surface.normalWS = normalize(input.normalWS);
     surface.color = base.rgb;
     surface.alpha = base.a;
     surface.viewDirWS = normalize(_WorldSpaceCameraPos - input.positionWS);

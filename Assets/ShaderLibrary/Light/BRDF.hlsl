@@ -72,7 +72,7 @@ BRDF GetBRDF(Surface surface)
 // 高光强度，根据视角方向和反射方向的平行程度，有具体公式
 float SpecularStrength (Surface surface, BRDF brdf, Light light) {
     float3 h = SafeNormalize(light.directionWS + surface.viewDirWS);
-    float nh2 = Square(saturate(dot(surface.nromalWS, h)));
+    float nh2 = Square(saturate(dot(surface.normalWS, h)));
     float lh2 = Square(saturate(dot(light.directionWS, h)));
     float r2 = Square(brdf.roughness);
     float d2 = Square(nh2 * (r2 - 1.0) + 1.00001);

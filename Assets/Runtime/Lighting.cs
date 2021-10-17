@@ -16,10 +16,12 @@ namespace CignalRP {
         public static readonly int dirLightCountId = Shader.PropertyToID("_DirectionalLightCount");
         public static readonly int dirLightColorsId = Shader.PropertyToID("_DirectionalLightColors");
         public static readonly int dirLightDirectionsId = Shader.PropertyToID("_DirectionalLightWSDirections");
+        public static readonly int dirLightShadowDataId = Shader.PropertyToID("_DirectionalLightShadowData");
 
         public const int MAX_DIR_LIGHT_COUNT = 4;
         public static readonly Vector4[] dirLightColors = new Vector4[MAX_DIR_LIGHT_COUNT];
         public static readonly Vector4[] dirLightWSDirections = new Vector4[MAX_DIR_LIGHT_COUNT];
+        public static readonly Vector4[] dirLightShadowData = new Vector4[MAX_DIR_LIGHT_COUNT];
         
         private Shadow shadow = new Shadow();
 
@@ -58,6 +60,7 @@ namespace CignalRP {
             cmdBuffer.SetGlobalInt(dirLightCountId, dirLightCount);
             cmdBuffer.SetGlobalVectorArray(dirLightColorsId, dirLightColors);
             cmdBuffer.SetGlobalVectorArray(dirLightDirectionsId, dirLightWSDirections);
+            cmdBuffer.SetGlobalVectorArray(dirLightShadowDataId, dirLightShadowData);
         }
 
         private void SetupDirectionalLights(int index, ref VisibleLight visibleLight) {
@@ -74,7 +77,8 @@ namespace CignalRP {
 
             // 保留Light阴影设置数据，得到可投射shadow的light数据
             // index是dirLightWSDirections的下标
-            shadow.ReserveDirectionalShadows(visibleLight.light, index);
+            dirLightShadowData[index] = shadow.ReserveDirectionalShadows(visibleLight.light, index);
+
             // Light light = RenderSettings.sun;
             // cmdBuffer.SetGlobalVector(dirLightColorId, light.color.linear * light.intensity);
             // cmdBuffer.SetGlobalVector(dirLightDirectionId, -light.transform.forward);

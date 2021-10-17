@@ -3,7 +3,8 @@
 
 struct Surface
 {
-    float3 nromalWS;
+    float3 positionWS;
+    float3 normalWS;
     
     float3 color;
     float alpha;
