@@ -20,14 +20,15 @@ namespace CignalRP {
 
         // 最大投射阴影的平行光数量
         public const int MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT = 4;
+        public const int MAX_CASCADE_COUNT = 4;
 
         private int shadowedDirectionalLightCount = 0;
         private ShadowedDirectionalLight[] shadowedDirectionalLights = new ShadowedDirectionalLight[MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT];
 
-        public static readonly int dirLightShadowAtlasId = Shader.PropertyToID("_DirectionalLightShadowAtlas");
+        private static readonly int dirLightShadowAtlasId = Shader.PropertyToID("_DirectionalLightShadowAtlas");
 
         private static readonly int dirShadowMatricesId = Shader.PropertyToID("_DirectionalShadowLightMatrices");
-        private static readonly Matrix4x4[] dirShadowMatrices = new Matrix4x4[MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT];
+        private static readonly Matrix4x4[] dirShadowMatrices = new Matrix4x4[MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADE_COUNT];
 
         public void Setup(ref ScriptableRenderContext context, ref CullingResults cullingResults, ShadowSettings shadowSettings) {
             this.context = context;
@@ -60,7 +61,7 @@ namespace CignalRP {
             cmdBuffer.BeginSample(ProfileName);
             CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
 
-            int tileCount = shadowedDirectionalLightCount;
+            int tileCount = shadowedDirectionalLightCount * shadowSettings.directionalShadow.cascadeCount;
             // atlas中每行几个
             // 比如2light * 3cascade, 还是atlas中每行4个
             int countPerLine = tileCount <= 1 ? 1 : tileCount <= 4 ? 2 : 4;
@@ -77,19 +78,25 @@ namespace CignalRP {
 
         private void RenderDirectionalShadow(int lightIndex, int countPerLine, int tileSize) {
             var light = shadowedDirectionalLights[lightIndex];
-
             var shadowDrawSettings = new ShadowDrawingSettings(cullingResults, light.visibleLightIndex);
-            cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(light.visibleLightIndex, 0, 1, Vector3.zero, tileSize, 0f,
-                out Matrix4x4 viewMatrix, out Matrix4x4 projMatrix, out ShadowSplitData splitData);
-            shadowDrawSettings.splitData = splitData;
+            int cascadeCount = shadowSettings.directionalShadow.cascadeCount;
+            int startTileIndexOfThisLight = lightIndex * cascadeCount;
+            Vector3 ratios = shadowSettings.directionalShadow.cascadeRatios;
 
-            int tileIndex = lightIndex;
-            Vector2 viewport = SetTileViewport(tileIndex, countPerLine, tileSize);
-            // 得到world->light的矩阵， 此时camera在light位置
-            dirShadowMatrices[lightIndex] = ConvertToAtlasMatrix(projMatrix, viewMatrix, viewport, countPerLine);
-            cmdBuffer.SetViewProjectionMatrices(viewMatrix, projMatrix);
-            CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
-            context.DrawShadows(ref shadowDrawSettings);
+            for (int i = 0; i < cascadeCount; ++i) {
+                cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(light.visibleLightIndex, i, cascadeCount, ratios,
+                    tileSize, 0f,
+                    out Matrix4x4 viewMatrix, out Matrix4x4 projMatrix, out ShadowSplitData splitData);
+
+                shadowDrawSettings.splitData = splitData;
+                int tileIndex = startTileIndexOfThisLight + i;
+                Vector2 viewport = SetTileViewport(tileIndex, countPerLine, tileSize);
+                // 得到world->light的矩阵， 此时camera在light位置
+                dirShadowMatrices[tileIndex] = ConvertToAtlasMatrix(projMatrix, viewMatrix, viewport, countPerLine);
+                cmdBuffer.SetViewProjectionMatrices(viewMatrix, projMatrix);
+                CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
+                context.DrawShadows(ref shadowDrawSettings);
+            }
         }
 
         // vp矩阵将positionWS转换到ndc中， 这个矩阵将positionWS转换到size=1的CUBE区域中的某个tile块中
@@ -135,7 +142,7 @@ namespace CignalRP {
             textureScaleAndBias.m03 = 0.5f;
             textureScaleAndBias.m13 = 0.5f;
             textureScaleAndBias.m23 = 0.5f;
-           
+
             // Apply texture scale and offset to save a MAD in shader.
             return textureScaleAndBias * worldToShadow;
         }
@@ -166,8 +173,9 @@ namespace CignalRP {
                     visibleLightIndex = visibleLightIndex,
                 };
 
-                return new Vector2(light.shadowStrength, shadowedDirectionalLightCount++);
+                return new Vector2(light.shadowStrength, shadowSettings.directionalShadow.cascadeCount * shadowedDirectionalLightCount++);
             }
+
             return Vector2.zero;
         }
     }

@@ -6,6 +6,7 @@
 #include "Surface.hlsl"
 
 #define MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT 4
+#define MAX_CASCADE_COUNT 4
 
 // 其实就是:TEXTURE2D(textureName)
 TEXTURE2D_SHADOW(_DirectionalLightShadowAtlas);
@@ -13,7 +14,7 @@ TEXTURE2D_SHADOW(_DirectionalLightShadowAtlas);
 SAMPLER_CMP(SHADOW_SAMPLER);
 
 CBUFFER_START(_CRPShadows)
-    float4x4 _DirectionalShadowLightMatrices[MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT];
+    float4x4 _DirectionalShadowLightMatrices[MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADE_COUNT];
 CBUFFER_END
 
 struct DirectionalShadowData

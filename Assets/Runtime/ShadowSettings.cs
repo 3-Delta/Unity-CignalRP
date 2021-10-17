@@ -15,14 +15,26 @@ namespace CignalRP {
             _4096 = 4096,
             _8192 = 8192,
         }
-        
+
         [Serializable]
         public struct DirectionalShadow {
             public EShadowMapSize shadowMapAtlasSize;
+            [Range(1, 4)] public int cascadeCount;
+            [Range(0f, 1f)] public float cascadeRatio1, cascadeRatio2, cascadeRatio3;
+            
+            public Vector3 cascadeRatios {
+                get {
+                    return new Vector3(cascadeRatio1, cascadeRatio2, cascadeRatio3);
+                }
+            }
         }
-
+        
         public DirectionalShadow directionalShadow = new DirectionalShadow() {
-            shadowMapAtlasSize = EShadowMapSize._1024
+            shadowMapAtlasSize = EShadowMapSize._1024,
+            cascadeCount = 4,
+            cascadeRatio1 = 0.1f,
+            cascadeRatio2 = 0.25f,
+            cascadeRatio3 = 0.5f
         };
     }
 }
