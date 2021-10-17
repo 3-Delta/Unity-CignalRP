@@ -38,6 +38,7 @@ namespace CignalRP {
         }
 
         public void Render() {
+            // 光源不符合shadow的时候,不渲染shadowmap
             if (shadowedDirectionalLightCount > 0) {
                 RenderDirectionalShadow();
             }
