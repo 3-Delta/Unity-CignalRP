@@ -16,6 +16,10 @@ MonoBehaviour:
   useGPUInstancing: 1
   useSRPBatcher: 1
   shadowSettings:
-    maxShadowDistance: 15
+    maxShadowDistance: 30
     directionalShadow:
       shadowMapAtlasSize: 1024
+      cascadeCount: 3
+      cascadeRatio1: 0.3
+      cascadeRatio2: 0.4
+      cascadeRatio3: 0.5
