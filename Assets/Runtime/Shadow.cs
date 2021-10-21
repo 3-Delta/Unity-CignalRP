@@ -30,6 +30,15 @@ namespace CignalRP {
         private static readonly int dirShadowMatricesId = Shader.PropertyToID("_DirectionalShadowLightMatrices");
         private static readonly Matrix4x4[] dirShadowMatrices = new Matrix4x4[MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADE_COUNT];
 
+        // 视图空间距离,到近裁剪面距离
+        private static readonly int maxVSShadowDistanceId = Shader.PropertyToID("_MaxVSShadowDistance");
+        
+        // https://edu.uwa4d.com/lesson-detail/282/1311/0?isPreview=0
+        // 相机视锥体的各个裁剪球,因为是球体,所以针对一个camera来说,每个light的裁剪球是一样的,因为是球体,而不是正方形之类的.
+        private static readonly int cascadeCountId = Shader.PropertyToID("_CascadeCount");
+        private static readonly int cascadeCullingSpheresId = Shader.PropertyToID("_CascadeCullingSpheres");
+        private static Vector4[] cascadeCullingSpheres = new Vector4[MAX_CASCADE_COUNT];
+
         public void Setup(ref ScriptableRenderContext context, ref CullingResults cullingResults, ShadowSettings shadowSettings) {
             this.context = context;
             this.cullingResults = cullingResults;
@@ -69,9 +78,13 @@ namespace CignalRP {
             for (int i = 0; i < shadowedDirectionalLightCount; ++i) {
                 RenderDirectionalShadow(i, countPerLine, tileSize);
             }
-
+            
+            cmdBuffer.SetGlobalInt(cascadeCountId, shadowSettings.directionalShadow.cascadeCount);
+            cmdBuffer.SetGlobalVectorArray(cascadeCullingSpheresId, cascadeCullingSpheres);
             cmdBuffer.SetGlobalMatrixArray(dirShadowMatricesId, dirShadowMatrices);
 
+            cmdBuffer.SetGlobalFloat(maxVSShadowDistanceId, shadowSettings.maxShadowDistance);
+            
             cmdBuffer.EndSample(ProfileName);
             CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
         }
@@ -88,6 +101,11 @@ namespace CignalRP {
                     tileSize, 0f,
                     out Matrix4x4 viewMatrix, out Matrix4x4 projMatrix, out ShadowSplitData splitData);
 
+                if (lightIndex == 0) {
+                    SetCascadeData(i, splitData.cullingSphere, tileSize);
+                    
+                }
+
                 shadowDrawSettings.splitData = splitData;
                 int tileIndex = startTileIndexOfThisLight + i;
                 Vector2 viewport = SetTileViewport(tileIndex, countPerLine, tileSize);
@@ -97,6 +115,12 @@ namespace CignalRP {
                 CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
                 context.DrawShadows(ref shadowDrawSettings);
             }
+        }
+
+        private void SetCascadeData(int cascadeIndex, Vector4 cullingSphere, float tileSize) {
+            cullingSphere.w *= cullingSphere.w;
+            cascadeCullingSpheres[cascadeIndex] = cullingSphere;
+
         }
 
         // vp矩阵将positionWS转换到ndc中， 这个矩阵将positionWS转换到size=1的CUBE区域中的某个tile块中

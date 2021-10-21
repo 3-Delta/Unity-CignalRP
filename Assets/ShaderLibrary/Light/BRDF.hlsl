@@ -52,7 +52,7 @@ float OneMinusReflectivity(float metallic)
     // = (1 - MIN_REFLECTIVITY) * (1 - metallic)
 }
 
-BRDF GetBRDF(Surface surface)
+BRDF GetBRDF(FragSurface surface)
 {
     // 非金属的纯粹漫反射的物体
     BRDF brdf;
@@ -70,8 +70,8 @@ BRDF GetBRDF(Surface surface)
 }
 
 // 高光强度，根据视角方向和反射方向的平行程度，有具体公式
-float SpecularStrength (Surface surface, BRDF brdf, Light light) {
-    float3 h = SafeNormalize(light.directionWS + surface.viewDirWS);
+float SpecularStrength (FragSurface surface, BRDF brdf, Light light) {
+    float3 h = SafeNormalize(light.directionWS + surface.viewDirectionWS);
     float nh2 = Square(saturate(dot(surface.normalWS, h)));
     float lh2 = Square(saturate(dot(light.directionWS, h)));
     float r2 = Square(brdf.roughness);
@@ -87,7 +87,7 @@ float SpecularStrength (Surface surface, BRDF brdf, Light light) {
 // Fd, Fs分别为漫反射,高光反射brdf函数，Kd, Ks分别是漫反射，高光反射的反射系数，因为能量守恒，Kd + Ks < 1, 因为有部分被吸收了
 // 其实pbr中，这里粗糙度其实影响的是 法线分布函数， 这里全部究极到了高光强度这个概念中
 // 这里使用的brdf是Minimalist CookTorrance BRDF的一种变体
-float3 DirectBRDF (Surface surface, BRDF brdf, Light light) {
+float3 DirectBRDF (FragSurface surface, BRDF brdf, Light light) {
     float specularStrength = SpecularStrength(surface, brdf, light);
     #if defined(_PREMULTIPLY_ALPHA)
         // 为了解决变化alpha的时候,高光也跟随变化的情况

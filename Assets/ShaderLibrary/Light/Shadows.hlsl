@@ -14,6 +14,12 @@ TEXTURE2D_SHADOW(_DirectionalLightShadowAtlas);
 SAMPLER_CMP(SHADOW_SAMPLER);
 
 CBUFFER_START(_CRPShadows)
+    int _CascadeCount;
+    // 针对同一个相机,所有光源共用
+    float4 _CascadeCullingSpheres[MAX_CASCADE_COUNT];
+
+    float _MaxVSShadowDistance;
+
     float4x4 _DirectionalShadowLightMatrices[MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADE_COUNT];
 CBUFFER_END
 
@@ -22,6 +28,39 @@ struct DirectionalShadowData
     float shadowStrength;
     int tileIndexInShadowmap;
 };
+
+struct ShadowData {
+    int cascadeIndex;
+    
+    fixed inAnyCascade;
+    // 是否超过了maxDistance
+    fixed inMaxVSShadowDistance;
+};
+
+ShadowData GetShadowData(FragSurface surface) {
+    ShadowData data;
+    data.inAnyCascade = 1;
+    data.inMaxVSShadowDistance = surface.depthVS < _MaxVSShadowDistance ? 1 : 0;
+    int i;
+    for (i = 0; i < _CascadeCount; ++ i)
+    {
+        float4 sphere = _CascadeCullingSpheres[i];
+        float distanceSqr = DistanceSquare(surface.positionWS, sphere.xyz);
+        if(distanceSqr < sphere.w)
+        {
+            // 如果一个vertex处于两个球体中,则这里只计算cascadeIndex小的球体.因为这里break了
+            break;
+        }
+    }
+
+    if(i == _CascadeCount)
+    {
+        data.inAnyCascade = 0;
+    }
+    
+    data.cascadeIndex = i;
+    return data;
+}
 
 fixed SampleDirectionalShadowAtlas(float3 positionSTS)
 {
@@ -35,9 +74,10 @@ fixed SampleDirectionalShadowAtlas(float3 positionSTS)
 
 // 采样到shadowmap之后,还需要考虑shadowstrength的影响,其实strength==0的时候,可以不生成shadowmap的,这样子节省
 // 这里配合返回值其实是配合IncomingLight的乘法计算的,所以在阴影中为0
-fixed GetDirectionalShadowAttenuation(DirectionalShadowData shadowData, Surface surface)
+fixed GetDirectionalShadowAttenuation(DirectionalShadowData shadowData, FragSurface surface)
 {
     // 因为strength==0的时候,其实不应该有shadowmap
+    // needSampleShadowmap为0,这里直接return,不会采样shadowmap
     if(shadowData.shadowStrength <= 0)
     {
         return 1;

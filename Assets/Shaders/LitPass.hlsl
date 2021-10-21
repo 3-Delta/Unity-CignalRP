@@ -63,12 +63,13 @@ float4 LitPassFragment(Varyings input) : SV_Target
     #endif
 
     // 填充surface
-    Surface surface;
+    FragSurface surface;
     surface.positionWS = input.positionWS;
     surface.normalWS = normalize(input.normalWS);
     surface.color = base.rgb;
     surface.alpha = base.a;
-    surface.viewDirWS = normalize(_WorldSpaceCameraPos - input.positionWS);
+    surface.viewDirectionWS = normalize(_WorldSpaceCameraPos - input.positionWS);
+    surface.depthVS = -TransformWorldToView(input.positionWS).z;
     surface.metallic = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Metallic);
     surface.smoothness = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Smoothness);
 
