@@ -9,7 +9,7 @@ Material:
   m_PrefabAsset: {fileID: 0}
   m_Name: Opague
   m_Shader: {fileID: 4800000, guid: d0b41fb74e1a19a4bb65e029d784cb43, type: 3}
-  m_ShaderKeywords: 
+  m_ShaderKeywords: _CLIPPING _RECEIVE_SHADOWS
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
@@ -61,7 +61,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Floats:
     - _BumpScale: 1
-    - _Clipping: 0
+    - _Clipping: 1
     - _Cutoff: 0.241
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
@@ -74,6 +74,8 @@ Material:
     - _Parallax: 0.02
     - _PremulAlpha: 0
     - _PremulAlphax: 0
+    - _ReceiveShadows: 1
+    - _Shadows: 0
     - _Smoothness: 0.342
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1

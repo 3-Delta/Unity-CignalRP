@@ -33,6 +33,14 @@ Varyings ShadowCasterPassVertex(Attributes input)
     UNITY_TRANSFER_INSTANCE_ID(input, output);
     float3 positionWS = TransformObjectToWorld(input.positionOS);
     output.positionCS = TransformWorldToHClip(positionWS);
+
+    #if UNITY_REVERSED_Z
+        output.positionCS.z = min(output.positionCS.z, output.positionCS.w * UNITY_NEAR_CLIP_VALUE);
+    #else
+        // -w <= z <= w 属于ndc中有效片元
+        // 这里影响shadowmap的形成，其实就是在被裁剪的区域也有shadowmap形成，最终采样的时候不形成镂空的阴影
+        output.positionCS.z = max(output.positionCS.z, output.positionCS.w * UNITY_NEAR_CLIP_VALUE);
+    #endif
     
     float4 baseST = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseMap_ST);
     output.baseUV = input.baseUV * baseST.xy + baseST.zw;
@@ -48,8 +56,12 @@ void ShadowCasterPassFragment(Varyings input)
     float4 base = baseMap * baseColor;
 
     // 因为需要对于alphatest的镂空区域过滤，否则镂空区域会进入shadowmap,造成阴影错误
-    #if defined(_CLIPPING)
-        clip(base.a - UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff));
+    #if defined(_SHADOWS_CLIP)
+        float cutoff = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff);
+        clip(base.a - cutoff);
+    #elif defined(_SHADOWS_DITHER)
+        float dither = InterleavedGradientNoise(input.positionCS.xy, 0);
+        clip(base.a - dither);
     #endif
 }
 

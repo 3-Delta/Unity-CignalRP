@@ -9,7 +9,7 @@ Material:
   m_PrefabAsset: {fileID: 0}
   m_Name: Transparent
   m_Shader: {fileID: 4800000, guid: d0b41fb74e1a19a4bb65e029d784cb43, type: 3}
-  m_ShaderKeywords: _PREMULTIPLY_ALPHA
+  m_ShaderKeywords: _CLIPPING _PREMULTIPLY_ALPHA _RECEIVE_SHADOWS _SHADOWS_CLIP
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
@@ -61,7 +61,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Floats:
     - _BumpScale: 1
-    - _Clipping: 0
+    - _Clipping: 1
     - _Cutoff: 0.5
     - _DetailNormalMapScale: 1
     - _DstBlend: 10
@@ -74,6 +74,8 @@ Material:
     - _Parallax: 0.02
     - _PremulAlpha: 1
     - _PremulAlphax: 0
+    - _ReceiveShadows: 1
+    - _Shadows: 1
     - _Smoothness: 0.819
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1

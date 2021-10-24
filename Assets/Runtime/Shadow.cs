@@ -6,6 +6,12 @@ namespace CignalRP {
     public class Shadow {
         public struct ShadowedDirectionalLight {
             public int visibleLightIndex;
+
+            // 斜度比例偏差值
+            public float slopeScaleBias;
+
+            // 光源近裁剪
+            public float nearPlaneOffset;
         }
 
         public const string ProfileName = "Shadow";
@@ -30,14 +36,24 @@ namespace CignalRP {
         private static readonly int dirShadowMatricesId = Shader.PropertyToID("_DirectionalShadowLightMatrices");
         private static readonly Matrix4x4[] dirShadowMatrices = new Matrix4x4[MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADE_COUNT];
 
-        // 视图空间距离,到近裁剪面距离
-        private static readonly int maxVSShadowDistanceId = Shader.PropertyToID("_MaxVSShadowDistance");
-        
+        private static readonly int shadowDistanceVSadeId = Shader.PropertyToID("_ShadowDistanceVSFade");
+
         // https://edu.uwa4d.com/lesson-detail/282/1311/0?isPreview=0
         // 相机视锥体的各个裁剪球,因为是球体,所以针对一个camera来说,每个light的裁剪球是一样的,因为是球体,而不是正方形之类的.
         private static readonly int cascadeCountId = Shader.PropertyToID("_CascadeCount");
         private static readonly int cascadeCullingSpheresId = Shader.PropertyToID("_CascadeCullingSpheres");
+        private static readonly int cascadeDataId = Shader.PropertyToID("_CascadeData");
+
         private static Vector4[] cascadeCullingSpheres = new Vector4[MAX_CASCADE_COUNT];
+        private static Vector4[] cascadeData = new Vector4[MAX_CASCADE_COUNT];
+
+        private static string[] directionalFilterKeywords = {
+            "_Directional_PCF3",
+            "_Directional_PCF5",
+            "_Directional_PCF7",
+        };
+
+        private static int shadowAtlasSizeId = Shader.PropertyToID("_ShadowAtlasSize");
 
         public void Setup(ref ScriptableRenderContext context, ref CullingResults cullingResults, ShadowSettings shadowSettings) {
             this.context = context;
@@ -78,13 +94,17 @@ namespace CignalRP {
             for (int i = 0; i < shadowedDirectionalLightCount; ++i) {
                 RenderDirectionalShadow(i, countPerLine, tileSize);
             }
-            
+
             cmdBuffer.SetGlobalInt(cascadeCountId, shadowSettings.directionalShadow.cascadeCount);
             cmdBuffer.SetGlobalVectorArray(cascadeCullingSpheresId, cascadeCullingSpheres);
+            cmdBuffer.SetGlobalVectorArray(cascadeDataId, cascadeData);
             cmdBuffer.SetGlobalMatrixArray(dirShadowMatricesId, dirShadowMatrices);
 
-            cmdBuffer.SetGlobalFloat(maxVSShadowDistanceId, shadowSettings.maxShadowDistance);
-            
+            float cascadeFade = 1f - shadowSettings.directionalShadow.cascadeFade;
+            cmdBuffer.SetGlobalVector(shadowDistanceVSadeId, new Vector4(1f / shadowSettings.maxShadowVSDistance, 1f / shadowSettings.distanceFade, 1f / (1f - cascadeFade * cascadeFade)));
+
+            SetPCFKeywords();
+            cmdBuffer.SetGlobalVector(shadowAtlasSizeId, new Vector4(atlasSize, 1f / atlasSize));
             cmdBuffer.EndSample(ProfileName);
             CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
         }
@@ -98,12 +118,11 @@ namespace CignalRP {
 
             for (int i = 0; i < cascadeCount; ++i) {
                 cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(light.visibleLightIndex, i, cascadeCount, ratios,
-                    tileSize, 0f,
+                    tileSize, light.nearPlaneOffset,
                     out Matrix4x4 viewMatrix, out Matrix4x4 projMatrix, out ShadowSplitData splitData);
 
                 if (lightIndex == 0) {
                     SetCascadeData(i, splitData.cullingSphere, tileSize);
-                    
                 }
 
                 shadowDrawSettings.splitData = splitData;
@@ -112,15 +131,27 @@ namespace CignalRP {
                 // 得到world->light的矩阵， 此时camera在light位置
                 dirShadowMatrices[tileIndex] = ConvertToAtlasMatrix(projMatrix, viewMatrix, viewport, countPerLine);
                 cmdBuffer.SetViewProjectionMatrices(viewMatrix, projMatrix);
+                cmdBuffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
                 CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
                 context.DrawShadows(ref shadowDrawSettings);
+
+                // 还原
+                cmdBuffer.SetGlobalDepthBias(0f, 0f);
             }
         }
 
         private void SetCascadeData(int cascadeIndex, Vector4 cullingSphere, float tileSize) {
+            // 包围球直径和shadowmap的tilesize的关系
+            float texelSize = 2f * cullingSphere.w / tileSize;
+            
+            // pcf滤波范围和normalbias适配
+            float pcfFilterSize = texelSize * ((float)shadowSettings.directionalShadow.filterMode + 1f);
+            cullingSphere.w -= pcfFilterSize;
+            
             cullingSphere.w *= cullingSphere.w;
             cascadeCullingSpheres[cascadeIndex] = cullingSphere;
 
+            cascadeData[cascadeIndex] = new Vector4(1f / cullingSphere.w, pcfFilterSize * 1.4142136f);
         }
 
         // vp矩阵将positionWS转换到ndc中， 这个矩阵将positionWS转换到size=1的CUBE区域中的某个tile块中
@@ -183,24 +214,40 @@ namespace CignalRP {
             return offset;
         }
 
+        private void SetPCFKeywords() {
+            int index = (int)(shadowSettings.directionalShadow.filterMode) - 1;
+            for (int i = 0; i < directionalFilterKeywords.Length; ++i) {
+                if (i == index) {
+                    cmdBuffer.EnableShaderKeyword(directionalFilterKeywords[i]);
+                }
+                else {
+                    cmdBuffer.DisableShaderKeyword(directionalFilterKeywords[i]);
+                }
+            }
+        }
+
         public void Clean() {
             cmdBuffer.ReleaseTemporaryRT(dirLightShadowAtlasId);
             CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
         }
 
-        public Vector2 ReserveDirectionalShadows(Light light, int visibleLightIndex) {
+        public Vector3 ReserveDirectionalShadows(Light light, int visibleLightIndex) {
             if (shadowedDirectionalLightCount < MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT &&
                 light.shadows != LightShadows.None && light.shadowStrength > 0f &&
                 cullingResults.GetShadowCasterBounds(visibleLightIndex, out Bounds bounds)) {
                 // 光源设置为投射阴影，但是没有物件接收阴影，不需要shadowmap
                 shadowedDirectionalLights[shadowedDirectionalLightCount] = new ShadowedDirectionalLight() {
                     visibleLightIndex = visibleLightIndex,
+                    slopeScaleBias = light.shadowBias,
+                    // https://edu.uwa4d.com/lesson-detail/282/1311/0?isPreview=0
+                    // 影响unity阴影平坠的shadowmap的形成
+                    nearPlaneOffset = light.shadowNearPlane
                 };
 
-                return new Vector2(light.shadowStrength, shadowSettings.directionalShadow.cascadeCount * shadowedDirectionalLightCount++);
+                return new Vector3(light.shadowStrength, shadowSettings.directionalShadow.cascadeCount * shadowedDirectionalLightCount++, light.shadowNormalBias);
             }
 
-            return Vector2.zero;
+            return Vector3.zero;
         }
     }
 }

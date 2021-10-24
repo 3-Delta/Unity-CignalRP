@@ -53,7 +53,7 @@ namespace CignalRP {
             // 以物体为基准，剔除视野之外的物体，应该没有执行遮挡剔除
             // layer裁减等操作
             if (this.camera.TryGetCullingParameters(out ScriptableCullingParameters parameters)) {
-                parameters.shadowDistance = Mathf.Min(shadowSettings.maxShadowDistance, camera.farClipPlane);
+                parameters.shadowDistance = Mathf.Min(shadowSettings.maxShadowVSDistance, camera.farClipPlane);
                 cullResults = context.Cull(ref parameters);
                 return true;
             }
