@@ -142,6 +142,7 @@ namespace CignalRP {
 
         private void SetCascadeData(int cascadeIndex, Vector4 cullingSphere, float tileSize) {
             // 包围球直径和shadowmap的tilesize的关系
+            // 4.4.3 normalbias: ws中一个texel大小就足够了
             float texelSize = 2f * cullingSphere.w / tileSize;
             
             // pcf滤波范围和normalbias适配

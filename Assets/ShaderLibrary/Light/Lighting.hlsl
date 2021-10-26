@@ -8,9 +8,9 @@
 // https://zhuanlan.zhihu.com/p/393174880
 float3 IncomingLight(FragSurface surface, Light light)
 {
-    float dotNL = dot(surface.normalWS, light.directionWS);
+    float dotNL = dot(surface.normalWS, light.fragToLightDirectionWS);
     // 光源的衰减和阴影的衰减合成一起 [light.shadowAttenuation; 如果在阴影中,为0,否则大于0 小于1]
-    dotNL *= light.shadowAttenuation;
+    dotNL *= (light.shadowAttenuation * light.lightAttenuation);
     dotNL = saturate(dotNL);
     return dotNL * light.color;
 }
@@ -32,6 +32,12 @@ float3 GetLighting(FragSurface surface, BRDF brdf)
     for(int i = 0, dirLightCount = GetDirectionalLightCount(); i < dirLightCount; ++ i)
     {
         Light light = GetDirectionalLight(i, surface, shadowData);
+        color += GetLighting(surface, brdf, light);
+    }
+
+    for (int i = 0; i < GetOtherLightCount(); ++ i)
+    {
+        Light light = GetOtherLight(i, surface, shadowData);
         color += GetLighting(surface, brdf, light);
     }
     return color;
