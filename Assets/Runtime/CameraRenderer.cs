@@ -23,7 +23,7 @@ namespace CignalRP {
         private static readonly ShaderTagId UnlitShaderTagId = new ShaderTagId("SRPDefaultUnlit");
         private static readonly ShaderTagId LitShaderTagId = new ShaderTagId("CRPLit");
 
-        public void Render(ref ScriptableRenderContext context, Camera camera, bool useDynamicBatching, bool useGPUInstancing, ShadowSettings shadowSettings) {
+        public void Render(ref ScriptableRenderContext context, Camera camera, bool useDynamicBatching, bool useGPUInstancing, ShadowSettings shadowSettings, PostProcessSettings postProcessSettings) {
             this.camera = camera;
             this.context = context;
 
