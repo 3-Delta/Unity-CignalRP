@@ -5,7 +5,8 @@
 1. 每个相机渲染频率差异化控制
 2. 尽可能使用同一个相机渲染 场景和UI
 3. hsr对于渲染物体顺序影响？是否可以在渲染不透明物体的时候，不在cpu端进行从近到远的排序？
-4. ...
+4. normalbias推近多少合适？
+5. 每个光源对应的layer设计？
 
 学习资料:
 1. https://edu.uwa4d.com/course-intro/0/282?purchased=true 
