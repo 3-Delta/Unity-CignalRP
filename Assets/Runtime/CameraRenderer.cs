@@ -10,10 +10,14 @@ namespace CignalRP {
         public CommandBuffer cmdBuffer { get; protected set; } = new CommandBuffer();
 
         public Camera camera { get; protected set; } = null;
-
-        private Lighting lighting = new Lighting();
         private ScriptableRenderContext context;
         private CullingResults cullingResults;
+
+        private Lighting lighting = new Lighting();
+
+        public static readonly int FramebufferId = Shader.PropertyToID("_CameraFrameBuffer");
+        private PostProcessStack postProcessStack = new PostProcessStack();
+        private PostProcessSettings postProcessSettings;
 
         // https://www.pianshen.com/article/7860291589/
         // Shader中不写 LightMode 时默认ShaderTagId值为“SRPDefaultUnlit”
@@ -26,6 +30,7 @@ namespace CignalRP {
         public void Render(ref ScriptableRenderContext context, Camera camera, bool useDynamicBatching, bool useGPUInstancing, ShadowSettings shadowSettings, PostProcessSettings postProcessSettings) {
             this.camera = camera;
             this.context = context;
+            this.postProcessSettings = postProcessSettings;
 
             if (camera.TryGetComponent(out CameraRendererIni cameraIni)) {
                 if (Time.frameCount % cameraIni.rendererFrequency != 0) {
@@ -65,11 +70,12 @@ namespace CignalRP {
         #region Pre/Post Draw
         private void PreDraw(ShadowSettings shadowSettings) {
             this.cmdBuffer.BeginSample(this.ProfileName);
-            CameraRenderer.ExecuteCmdBuffer(ref context, this.cmdBuffer);
-            
+            ExecuteCmdBuffer(ref context, this.cmdBuffer);
+
             // 设置光源,阴影信息, 内含shadowmap的渲染， 所以需要在正式的相机参数等之前先渲染， 否则放在函数最尾巴，则渲染为一片黑色
             lighting.Setup(ref context, ref cullingResults, shadowSettings);
-            
+            postProcessStack.Setup(ref context, camera, postProcessSettings);
+
             // 设置vp矩阵给shader的unity_MatrixVP属性，在Framedebugger中选中某个dc可看
             // vp由CPU构造
             context.SetupCameraProperties(this.camera);
@@ -85,6 +91,12 @@ namespace CignalRP {
             //    Nothing = 4
             // }
             CameraClearFlags flags = this.camera.clearFlags;
+            if (postProcessStack.IsActive) {
+                cmdBuffer.GetTemporaryRT(FramebufferId, camera.pixelHeight, camera.pixelHeight, 32, FilterMode.Bilinear
+                    , RenderTextureFormat.Default);
+                cmdBuffer.SetRenderTarget(FramebufferId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+            }
+
             bool clearDepth = flags <= CameraClearFlags.Depth;
             bool clearColor = flags == CameraClearFlags.Color;
             Color bgColor = clearColor ? this.camera.backgroundColor.linear : Color.clear;
@@ -94,16 +106,24 @@ namespace CignalRP {
 
             this.cmdBuffer.BeginSample(this.ProfileName);
             CameraRenderer.ExecuteCmdBuffer(ref context, this.cmdBuffer);
-            
+
             this.cmdBuffer.EndSample(this.ProfileName);
         }
 
         private void PostDraw() {
             this.cmdBuffer.EndSample(this.ProfileName);
             CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
-
+            
+            if (postProcessStack.IsActive) {
+                postProcessStack.Render(FramebufferId);
+            }
+            
             lighting.Clean();
             
+            if (postProcessStack.IsActive) {
+                cmdBuffer.ReleaseTemporaryRT(FramebufferId);
+            }
+
             // submit之后才会开始绘制本桢
             context.Submit();
         }

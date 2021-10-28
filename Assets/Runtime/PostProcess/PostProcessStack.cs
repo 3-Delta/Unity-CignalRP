@@ -6,7 +6,9 @@ using UnityEngine.Rendering;
 namespace CignalRP {
     public class PostProcessStack {
         public const string BufferName = "PostProcess";
-        public CommandBuffer cmdBuffer { get; protected set; } = new CommandBuffer();
+        public CommandBuffer cmdBuffer { get; protected set; } = new CommandBuffer() {
+            name = BufferName
+        };
         
         private ScriptableRenderContext context;
         private Camera camera;
@@ -25,7 +27,9 @@ namespace CignalRP {
         }
 
         public void Render(int sourceId) {
+            cmdBuffer.Blit(sourceId, BuiltinRenderTextureType.CameraTarget);
             
+            CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
         }
     }
 }
