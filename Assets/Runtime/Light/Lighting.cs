@@ -4,7 +4,7 @@ using UnityEngine.Rendering;
 
 namespace CignalRP {
     public class Lighting {
-        public const string ProfileName = "Lighting";
+        public const string ProfileName = "CRP|Lighting";
 
         private CommandBuffer cmdBuffer = new CommandBuffer() {
             name = ProfileName

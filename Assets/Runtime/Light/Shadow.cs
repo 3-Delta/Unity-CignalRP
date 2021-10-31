@@ -14,7 +14,7 @@ namespace CignalRP {
             public float nearPlaneOffset;
         }
 
-        public const string ProfileName = "Shadow";
+        public const string ProfileName = "CRP|Shadow";
 
         private CommandBuffer cmdBuffer = new CommandBuffer() {
             name = ProfileName

@@ -41,10 +41,15 @@ namespace CignalRP {
             var filteringSetttings = FilteringSettings.defaultValue;
             context.DrawRenderers(cullingResults, ref drawingSettings, ref filteringSetttings);
         }
-
-        private void DrawGizmos() {
+        
+        private void DrawGizmosBeforeFX() {
             if (Handles.ShouldRenderGizmos()) {
-                context.DrawGizmos(this.camera, GizmoSubset.PreImageEffects);
+                context.DrawGizmos(camera, GizmoSubset.PreImageEffects);
+            }
+        }
+
+        private void DrawGizmosAfterFX() {
+            if (Handles.ShouldRenderGizmos()) {
                 context.DrawGizmos(this.camera, GizmoSubset.PostImageEffects);
             }
         }
@@ -62,7 +67,7 @@ namespace CignalRP {
 
         private void Prepare() {
             Profiler.BeginSample("Editor Only");
-            this.cmdBuffer.name = this.ProfileName = this.camera.name;
+            this.cmdBuffer.name = this.ProfileName = "CRP|" + this.camera.name;
             Profiler.EndSample();
 
             this.PrepareForSceneWindow();

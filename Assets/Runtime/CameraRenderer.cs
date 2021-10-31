@@ -5,8 +5,7 @@ using UnityEngine.Rendering;
 namespace CignalRP {
     // 负责单个相机的渲染
     public partial class CameraRenderer {
-        public const string CmdBufferName = "CameraRender";
-        public string ProfileName { get; protected set; } = CmdBufferName;
+        public string ProfileName { get; protected set; } = "CRP|CameraRender";
         public CommandBuffer cmdBuffer { get; protected set; } = new CommandBuffer();
 
         public Camera camera { get; protected set; } = null;
@@ -33,8 +32,13 @@ namespace CignalRP {
             this.postProcessSettings = postProcessSettings;
 
             if (camera.TryGetComponent(out CameraRendererIni cameraIni)) {
-                if (Time.frameCount % cameraIni.rendererFrequency != 0) {
-                    return;
+                if (cameraIni.rendererFrequency <= 0) {
+                    cameraIni.rendererFrequency = -1;
+                }
+                if (cameraIni.rendererFrequency != -1) {
+                    if (Time.frameCount % cameraIni.rendererFrequency == 0) {
+                        return;
+                    }
                 }
             }
 
@@ -92,8 +96,12 @@ namespace CignalRP {
             // }
             CameraClearFlags flags = this.camera.clearFlags;
             if (postProcessStack.IsActive) {
-                cmdBuffer.GetTemporaryRT(FramebufferId, camera.pixelHeight, camera.pixelHeight, 32, FilterMode.Bilinear
-                    , RenderTextureFormat.Default);
+                // 后效开启时,在渲染每个camera的时候,都强制cleardepth,clearcolor
+                if (flags > CameraClearFlags.Color) {
+                    flags = CameraClearFlags.Color;
+                }
+
+                cmdBuffer.GetTemporaryRT(FramebufferId, camera.pixelHeight, camera.pixelHeight, 32, FilterMode.Bilinear, RenderTextureFormat.Default);
                 cmdBuffer.SetRenderTarget(FramebufferId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             }
 
@@ -113,13 +121,19 @@ namespace CignalRP {
         private void PostDraw() {
             this.cmdBuffer.EndSample(this.ProfileName);
             CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
-            
+
+#if UNITY_EDITOR
+            DrawGizmosBeforeFX();
+#endif
             if (postProcessStack.IsActive) {
                 postProcessStack.Render(FramebufferId);
             }
-            
+#if UNITY_EDITOR
+            DrawGizmosAfterFX();
+#endif
+
             lighting.Clean();
-            
+
             if (postProcessStack.IsActive) {
                 cmdBuffer.ReleaseTemporaryRT(FramebufferId);
             }
@@ -164,8 +178,7 @@ namespace CignalRP {
             context.DrawRenderers(cullingResults, ref drawingSettings, ref filteringSetttings);
 
 #if UNITY_EDITOR
-            this.DrawUnsupported();
-            this.DrawGizmos();
+            DrawUnsupported();
 #endif
         }
         #endregion
