@@ -10,8 +10,10 @@ namespace CignalRP {
 
         [Serializable]
         public struct BloomSettings {
-            [Range(0f, PostProcessStack.MAX_BLOOM_Pyramid_COUNT)] public int maxIterationCount;
+            [Range(0f, PostProcessStack.MAX_BLOOM_PYRAMID_COUNT)] public int maxIterationCount;
             [Min(1f)] public int downscaleLimit;
+            public bool bloomBicubicUpsampling;
+            [Min(0f)] public float intensity;
         }
 
         public Material material {
@@ -32,6 +34,8 @@ namespace CignalRP {
         public PostProcessSettings() {
             this._bloomSettings.maxIterationCount = 16;
             this._bloomSettings.downscaleLimit = 2;
+            this._bloomSettings.bloomBicubicUpsampling = true;
+            this._bloomSettings.intensity = 1f;
         }
     }
 }

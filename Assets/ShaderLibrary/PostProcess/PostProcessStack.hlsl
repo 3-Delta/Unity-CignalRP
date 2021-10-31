@@ -1,6 +1,8 @@
 ﻿#ifndef CRP_POSTPROCESS_INCLUDED
 #define CRP_POSTPROCESS_INCLUDED
 
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Filtering.hlsl"
+
 TEXTURE2D(_PostProcessSource1);
 TEXTURE2D(_PostProcessSource2);
 SAMPLER(sampler_linear_clamp);
@@ -22,13 +24,26 @@ float4 GetSourceTexelSize()
     return _PostProcessSource_TexelSize;
 }
 
-float4 GetSource(float2 screenUV)
+float4 GetSource1(float2 screenUV)
 {
     // return SAMPLE_TEXTURE2D(_PostProcessSource1, sampler_linear_clamp, screenUV);
 
     // SAMPLE_TEXTURE2D会自动选择一个合适的lod,而我们原纹理没有lod
     // 所以使用SAMPLE_TEXTURE2D_LOD设定一个固定的lod
     return SAMPLE_TEXTURE2D_LOD(_PostProcessSource1, sampler_linear_clamp, screenUV, 0);
+}
+
+float4 GetSource2(float2 screenUV)
+{
+    return SAMPLE_TEXTURE2D_LOD(_PostProcessSource2, sampler_linear_clamp, screenUV, 0);
+}
+
+// 上采样过程中,因为也是双线性过滤,会显得图像更向块状,所以使用三线性过滤
+float4 GetSource1Bicubic(float2 screenUV) 
+{
+    return SampleTexture2DBicubic(
+        TEXTURE2D_ARGS(_PostProcessSource1, sampler_linear_clamp), screenUV,
+        _PostProcessSource_TexelSize.zwxy, 1.0, 0.0);
 }
 
 Varyings DefaultVertex(uint vertexID : SV_VertexID)
@@ -52,7 +67,7 @@ Varyings DefaultVertex(uint vertexID : SV_VertexID)
 
 float4 CopyFragment(Varyings input) : SV_TARGET
 {
-    return GetSource(input.screenUV);
+    return GetSource1(input.screenUV);
 }
 
 float4 BloomHorizontalFragment(Varyings input) : SV_TARGET
@@ -70,7 +85,7 @@ float4 BloomHorizontalFragment(Varyings input) : SV_TARGET
         // 将2* -> 1* 分辨率, 所以uv*2
         float offset = offsets[i] * 2.0 * GetSourceTexelSize().x;
         float2 uv = input.screenUV + float2(offset, 0.0);
-        color += GetSource(uv).rgb * weights[i];
+        color += GetSource1(uv).rgb * weights[i];
     }
 
     return float4(color, 1.0);
@@ -88,11 +103,32 @@ float4 BloomVerticalFragment(Varyings input) : SV_TARGET {
         // 不 *2
         float offset = offsets[i] * GetSourceTexelSize().y;
         float2 uv = input.screenUV + float2(0.0, offset);
-        color += GetSource(uv).rgb * weights[i];
+        color += GetSource1(uv).rgb * weights[i];
     }
 
     return float4(color, 1.0);
 }
+
+bool _BloomBicubicUpsampling;
+float _BloomIntensity;
+float4 BloomCombineFragment(Varyings input) : SV_TARGET {
+    float3 low;
+    if (_BloomBicubicUpsampling) {
+        low = GetSource1Bicubic(input.screenUV).rgb;
+    }
+    else {
+        low = GetSource1(input.screenUV).rgb;
+    }
+
+    float3 high = GetSource2(input.screenUV).rgb;
+    return float4(low * _BloomIntensity + high, 1.0);
+}
+
+//float4 BloomPrefilterFragment(Varyings input) : SV_TARGET
+//{
+//    float3 color = ApplyBloomThreshold(GetSource1(input.screenUV).rgb);
+//    return float4(color, 1.0);
+//}
 
 
 #endif

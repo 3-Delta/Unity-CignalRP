@@ -6,6 +6,7 @@
         
         ZTest Always
         ZWrite off
+        Blend one zero
         
         // 第一次见这个关键字
         HLSLINCLUDE
@@ -13,6 +14,16 @@
             #include "../ShaderLibrary/PostProcess/PostProcessStack.hlsl"
         ENDHLSL
         
+        Pass
+        {
+            Name "Bloom Combine"
+
+            HLSLPROGRAM
+                #pragma target 3.5
+                #pragma vertex DefaultVertex
+                #pragma fragment BloomCombineFragment
+            ENDHLSL
+        }
         Pass
         {
             // 单纯下采样得不到非常块状结果,需要配合高斯模糊
@@ -25,6 +36,16 @@
                 #pragma fragment BloomHorizontalFragment
             ENDHLSL
         }
+        /*Pass 
+        {
+            Name "Bloom Prefilter"
+
+            HLSLPROGRAM
+                #pragma target 3.5
+                #pragma vertex DefaultVertex
+                #pragma fragment BloomPrefilterFragment
+            ENDHLSL
+        }*/
         Pass
         {
             Name "Bloom Vertical"
