@@ -23,6 +23,7 @@ namespace CignalRP {
         private Camera camera;
         private CameraRendererIni cameraRendererIni;
         private PostProcessSettings postProcessSettings;
+        private bool allowHDR;
 
         public const int MAX_BLOOM_PYRAMID_COUNT = 5;
 
@@ -71,7 +72,9 @@ namespace CignalRP {
             this.cmdBuffer.DrawProcedural(Matrix4x4.identity, this.postProcessSettings.material, (int)pass, MeshTopology.Triangles, 3);
         }
 
-        public void Render(int sourceId) {
+        public void Render(int sourceId, bool allowHDR) {
+            this.allowHDR = allowHDR;
+
             this.DoBloom(sourceId);
 
             CameraRenderer.ExecuteCmdBuffer(ref this.context, this.cmdBuffer);
@@ -108,8 +111,9 @@ namespace CignalRP {
                 }
 
                 int midId = toId - 1;
-                this.cmdBuffer.GetTemporaryRT(midId, width, height, 0, FilterMode.Bilinear, RenderTextureFormat.Default);
-                this.cmdBuffer.GetTemporaryRT(toId, width, height, 0, FilterMode.Bilinear, RenderTextureFormat.Default);
+                RenderTextureFormat format = this.allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
+                this.cmdBuffer.GetTemporaryRT(midId, width, height, 0, FilterMode.Bilinear, format);
+                this.cmdBuffer.GetTemporaryRT(toId, width, height, 0, FilterMode.Bilinear, format);
                 // 先hor,同时下采样(因为这里分辨率小了)
                 this.Draw(fromId, midId, EPostProcessPass.BloomHorizontal);
                 // 后ver,不下采样

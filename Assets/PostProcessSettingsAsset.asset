@@ -15,7 +15,7 @@ MonoBehaviour:
   _shader: {fileID: 4800000, guid: 94c1c78cf75d59c4491702afe6269482, type: 3}
   _material: {fileID: 0}
   _bloomSettings:
-    maxIterationCount: 4
+    maxIterationCount: 0
     downscaleLimit: 32
     bloomBicubicUpsampling: 1
     intensity: 0.1

@@ -28,3 +28,4 @@ MonoBehaviour:
       cascadeFade: 0.1
   postProcessSettings: {fileID: 11400000, guid: 26fb10f943bce8543aa20c062f5358fa,
     type: 2}
+  allowHDR: 0

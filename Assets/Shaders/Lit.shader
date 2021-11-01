@@ -63,6 +63,8 @@
 			// blend one zero 也就是直接覆盖
 			ColorMask 0
 			// Blend One Zero
+            // ztest lessequal
+            // zwrite on
 						
             HLSLPROGRAM
             #pragma target 3.5

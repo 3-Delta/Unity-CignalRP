@@ -11,9 +11,10 @@ namespace CignalRP {
 
         [SerializeField] private ShadowSettings shadowSettings = default;
         [SerializeField] private PostProcessSettings postProcessSettings = default;
+        [SerializeField] private bool allowHDR = false;
 
         protected override RenderPipeline CreatePipeline() {
-            return new CRP(useDynamicBatching, useGPUInstancing, useSRPBatcher, shadowSettings, postProcessSettings);
+            return new CRP(useDynamicBatching, useGPUInstancing, useSRPBatcher, shadowSettings, postProcessSettings, allowHDR);
         }
     }
 }
