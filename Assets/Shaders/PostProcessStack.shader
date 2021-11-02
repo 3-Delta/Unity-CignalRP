@@ -46,6 +46,17 @@
                 #pragma fragment BloomVerticalFragment
             ENDHLSL
         }
+
+        Pass
+        {
+            Name "ToneMap None"
+
+            HLSLPROGRAM
+                #pragma target 3.5
+                #pragma vertex DefaultVertex
+                #pragma fragment ToneMapNoneFragment
+            ENDHLSL
+        }
         Pass
         {
             Name "ToneMap ACES"
@@ -76,6 +87,7 @@
                 #pragma fragment ToneMapReinhardFragment
             ENDHLSL
         }
+
         Pass
         {
 			Name "Copy" // 其实就是Blit

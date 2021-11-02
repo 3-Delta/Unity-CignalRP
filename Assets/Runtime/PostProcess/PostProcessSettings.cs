@@ -19,7 +19,7 @@ namespace CignalRP {
         [Serializable]
         public struct ToneMapSettings {
             public enum EMode { 
-                None = -1,
+                None,
 
                 ACES,
                 Neutral,
@@ -27,6 +27,24 @@ namespace CignalRP {
             }
 
             public EMode mode;
+        }
+
+        [Serializable]
+        public struct ColorAdjustSettings {
+            // 曝光度
+            public float postExposure;
+
+            // 对比度, 最亮与最暗的比率
+            [Range(-100f, 100f)] public float contrast;
+
+            // 滤镜
+            [ColorUsage(false, true)] public Color colorFilter;
+
+            // 色调偏移
+            [Range(-180f, 180f)] public float hueShift;
+
+            // 饱和度
+            [Range(-100f, 100f)] public float saturation;
         }
 
         public Material material {
@@ -47,6 +65,12 @@ namespace CignalRP {
         [SerializeField]
         private ToneMapSettings _toneMapSettings;
         public ToneMapSettings toneMapSettings => this._toneMapSettings;
+
+        [SerializeField]
+        private ColorAdjustSettings _colorAdjustSettings = new ColorAdjustSettings {
+            colorFilter = Color.white,
+        };
+        public ColorAdjustSettings colorAdjustSettings => this._colorAdjustSettings;
 
         public PostProcessSettings() {
             this._bloomSettings.maxIterationCount = 16;

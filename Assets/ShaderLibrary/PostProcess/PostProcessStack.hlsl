@@ -125,9 +125,80 @@ float4 BloomCombineFragment(Varyings input) : SV_TARGET {
     return float4(low * _BloomIntensity + high, 1.0);
 }
 
+float4 _ColorAdjust;
+float4 _ColorFilter;
+
+// 曝光
+float3 ColorGradePostExposure(float3 color)
+{
+    // 曝光度就是:亮度???
+    return color * _ColorAdjust.x;
+}
+
+// 对比度
+float3 ColorGradeContrast(float3 color)
+{
+    color = LinearToLogC(color);
+    color = (color - ACEScc_MIDGRAY) * _ColorAdjust.y + ACEScc_MIDGRAY;
+    return LogCToLinear(color);
+}
+
+// 滤镜, 就是颜色相乘,比如红色*蓝色就是黑色, 也就是红色球体不反射蓝色光线
+float3 ColorGradeColorFilter(float3 color)
+{
+    color *= _ColorFilter.rgb;
+    return color;
+}
+
+// hueshift
+float3 ColorGradeHueShift(float3 color)
+{
+    color = RgbToHsv(color);
+    float hue = color.x + _ColorAdjust.z;
+    color.x = RotateHue(hue, 0.0, 1.0);
+    return HsvToRgb(color);
+}
+
+// saturation https://www.cnblogs.com/crazylights/p/3957566.html
+// rgb越接近,饱和度越小
+float3 ColorGradeSaturation(float3 color)
+{
+    // 灰度值
+    float luminance = Luminance(color);
+    float3 diff = color - luminance;
+    diff *= _ColorAdjust.w;
+    return luminance + diff;
+}
+
+float3 ColorGrade(float3 color)
+{
+    color = min(color, 60.0);
+
+    color = ColorGradePostExposure(color);
+
+    color = ColorGradeContrast(color);
+    color = max(color, 0.0);
+
+    color = ColorGradeColorFilter(color);
+    color = max(color, 0.0);
+
+    color = ColorGradeHueShift(color);
+
+    color = ColorGradeSaturation(color);
+    color = max(color, 0.0);
+
+    return color;
+}
+
+float4 ToneMapNoneFragment(Varyings input) : SV_TARGET{
+    float4 color = GetSource1(input.screenUV);
+    color.rgb = ColorGrade(color.rgb);
+    return color;
+}
+
 float4 ToneMapACESFragment(Varyings input) : SV_TARGET{
     float4 color = GetSource1(input.screenUV);
-    color.rgb = min(color.rgb, 60.0);
+    color.rgb = ColorGrade(color.rgb);
     color.rgb = AcesTonemap(unity_to_ACES(color.rgb));
     return color;
 }
@@ -135,7 +206,7 @@ float4 ToneMapACESFragment(Varyings input) : SV_TARGET{
 float4 ToneMapNeutralFragment(Varyings input) : SV_TARGET
 {
     float4 color = GetSource1(input.screenUV);
-    color.rgb = min(color.rgb, 60.0);
+    color.rgb = ColorGrade(color.rgb);
     color.rgb = NeutralTonemap(color.rgb);
     return color;
 }
@@ -143,9 +214,9 @@ float4 ToneMapNeutralFragment(Varyings input) : SV_TARGET
 float4 ToneMapReinhardFragment(Varyings input) : SV_TARGET
 {
     float4 color = GetSource1(input.screenUV);
-    color.rgb = min(color.rgb, 60.0);
+    color.rgb = ColorGrade(color.rgb);
     color.rgb /= (color.rgb + 1.0);
     return color;
-} 
+}
 
 #endif

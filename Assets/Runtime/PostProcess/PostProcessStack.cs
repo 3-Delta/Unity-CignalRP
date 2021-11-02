@@ -4,6 +4,8 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 
+using static CignalRP.PostProcessSettings;
+
 namespace CignalRP {
     public enum EPostProcessPass {
         // bloom
@@ -13,6 +15,7 @@ namespace CignalRP {
 
         // tone map 其实就是亮度,也就是rgb都变小
         // https://www.cnblogs.com/crazylights/p/3957566.html
+        ToneMapNone,
         ToneMapACES,
         ToneMapNeutral,
         ToneMapReinhard,
@@ -42,6 +45,9 @@ namespace CignalRP {
         private static readonly int bloomBicubicUpsamplingId = Shader.PropertyToID("_BloomBicubicUpsampling");
         private static readonly int bloomIntensityId = Shader.PropertyToID("_BloomIntensity");
         private static readonly int bloomResultId = Shader.PropertyToID("_BloomResult");
+
+        private static readonly int colorAdjustId = Shader.PropertyToID("_ColorAdjust");
+        private static readonly int colorFilterId = Shader.PropertyToID("_ColorFilter");
 
         private int bloomPyramidId;
 
@@ -85,11 +91,11 @@ namespace CignalRP {
             this.allowHDR = allowHDR;
 
             if (this.DoBloom(sourceId)) {
-                this.DoToneMap(bloomResultId);
+                this.DoColorGradeAndToneMap(bloomResultId);
                 this.cmdBuffer.ReleaseTemporaryRT(bloomResultId);
             }
             else {
-                this.DoToneMap(sourceId);
+                this.DoColorGradeAndToneMap(sourceId);
             }
 
             CameraRenderer.ExecuteCmdBuffer(ref this.context, this.cmdBuffer);
@@ -175,9 +181,27 @@ namespace CignalRP {
             return true;
         }
 
-        private void DoToneMap(int sourceId) {
-            PostProcessSettings.ToneMapSettings toneMapSettings= this.postProcessSettings.toneMapSettings;
-            EPostProcessPass pass = toneMapSettings.mode < 0 ? EPostProcessPass.Copy : EPostProcessPass.ToneMapACES + (int)toneMapSettings.mode;
+        private void ConfigColorAdjust() {
+            ColorAdjustSettings colorAdjustSettings = this.postProcessSettings.colorAdjustSettings;
+
+            cmdBuffer.SetGlobalVector(colorAdjustId, 
+                new Vector4(
+                    Mathf.Pow(2f, colorAdjustSettings.postExposure), 
+                    colorAdjustSettings.contrast * 0.01f + 1f,  // 因为range为[-100, 100],这里其实就是(x+100)/100;
+                    colorAdjustSettings.hueShift * (1f / 360f), 
+                    colorAdjustSettings.saturation * 0.01f + 1f
+                    )
+                );
+
+            cmdBuffer.SetGlobalColor(colorFilterId, colorAdjustSettings.colorFilter.linear);
+        }
+
+        // 最终执行tonemap
+        private void DoColorGradeAndToneMap(int sourceId) {
+            this.ConfigColorAdjust();
+
+            PostProcessSettings.ToneMapSettings toneMapSettings = this.postProcessSettings.toneMapSettings;
+            EPostProcessPass pass = EPostProcessPass.ToneMapNone + (int)toneMapSettings.mode;
             this.Draw(sourceId, BuiltinRenderTextureType.CameraTarget, pass);
         }
     }

@@ -20,3 +20,9 @@ MonoBehaviour:
     intensity: 0.1
   _toneMapSettings:
     mode: 0
+  _colorAdjustSettings:
+    postExposure: 0
+    contrast: 100
+    colorFilter: {r: 1, g: 1, b: 1, a: 1}
+    hueShift: 180
+    saturation: 100
