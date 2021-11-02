@@ -36,16 +36,6 @@
                 #pragma fragment BloomHorizontalFragment
             ENDHLSL
         }
-        /*Pass 
-        {
-            Name "Bloom Prefilter"
-
-            HLSLPROGRAM
-                #pragma target 3.5
-                #pragma vertex DefaultVertex
-                #pragma fragment BloomPrefilterFragment
-            ENDHLSL
-        }*/
         Pass
         {
             Name "Bloom Vertical"
@@ -56,7 +46,36 @@
                 #pragma fragment BloomVerticalFragment
             ENDHLSL
         }
+        Pass
+        {
+            Name "ToneMap ACES"
 
+            HLSLPROGRAM
+                #pragma target 3.5
+                #pragma vertex DefaultVertex
+                #pragma fragment ToneMapACESFragment
+            ENDHLSL
+        }
+        Pass
+        {
+            Name "ToneMap Neutral"
+
+            HLSLPROGRAM
+                #pragma target 3.5
+                #pragma vertex DefaultVertex
+                #pragma fragment ToneMapNeutralFragment
+            ENDHLSL
+        }
+        Pass
+        {
+            Name "ToneMap Reinhard"
+
+            HLSLPROGRAM
+                #pragma target 3.5
+                #pragma vertex DefaultVertex
+                #pragma fragment ToneMapReinhardFragment
+            ENDHLSL
+        }
         Pass
         {
 			Name "Copy" // 其实就是Blit

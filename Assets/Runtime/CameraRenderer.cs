@@ -29,7 +29,7 @@ namespace CignalRP {
         private static readonly ShaderTagId LitShaderTagId = new ShaderTagId("CRPLit");
 
         public void Render(ref ScriptableRenderContext context, Camera camera, bool useDynamicBatching, bool useGPUInstancing,
-            ShadowSettings shadowSettings, PostProcessSettings postProcessSettings, bool allowHDR) {
+            ShadowSettings shadowSettings, PostProcessSettings postProcessSettings, bool useHDR) {
             this.camera = camera;
             this.context = context;
             this.postProcessSettings = postProcessSettings;
@@ -53,7 +53,7 @@ namespace CignalRP {
                 return;
             }
 
-            this.allowHDR = allowHDR && camera.allowHDR;
+            this.allowHDR = useHDR && camera.allowHDR;
 
             this.PreDraw(shadowSettings);
             this.Draw(useDynamicBatching, useGPUInstancing);

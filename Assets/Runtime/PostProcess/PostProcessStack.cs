@@ -6,9 +6,18 @@ using UnityEngine.Rendering;
 
 namespace CignalRP {
     public enum EPostProcessPass {
+        // bloom
         BloomCombine,
         BloomHorizontal,
         BloomVertical,
+
+        // tone map 其实就是亮度,也就是rgb都变小
+        // https://www.cnblogs.com/crazylights/p/3957566.html
+        ToneMapACES,
+        ToneMapNeutral,
+        ToneMapReinhard,
+
+        // blit
         Copy,
     }
 
@@ -32,7 +41,7 @@ namespace CignalRP {
 
         private static readonly int bloomBicubicUpsamplingId = Shader.PropertyToID("_BloomBicubicUpsampling");
         private static readonly int bloomIntensityId = Shader.PropertyToID("_BloomIntensity");
-        //private static readonly int bloomPreFilterId = Shader.PropertyToID("_BloomPreFilter");
+        private static readonly int bloomResultId = Shader.PropertyToID("_BloomResult");
 
         private int bloomPyramidId;
 
@@ -75,7 +84,13 @@ namespace CignalRP {
         public void Render(int sourceId, bool allowHDR) {
             this.allowHDR = allowHDR;
 
-            this.DoBloom(sourceId);
+            if (this.DoBloom(sourceId)) {
+                this.DoToneMap(bloomResultId);
+                this.cmdBuffer.ReleaseTemporaryRT(bloomResultId);
+            }
+            else {
+                this.DoToneMap(sourceId);
+            }
 
             CameraRenderer.ExecuteCmdBuffer(ref this.context, this.cmdBuffer);
         }
@@ -90,28 +105,26 @@ namespace CignalRP {
         }
 #endif
 
-        private void DoBloom(int sourceId) {
-            this.cmdBuffer.BeginSample("CRP|Bloom");
-
+        private bool DoBloom(int sourceId) {
             PostProcessSettings.BloomSettings bloomSettings = this.postProcessSettings.bloomSettings;
             int width = this.camera.pixelWidth / 2;
             int height = this.camera.pixelHeight / 2;
             if (bloomSettings.maxIterationCount <= 0 || bloomSettings.intensity <= 0f || width < bloomSettings.downscaleLimit || height < bloomSettings.downscaleLimit) {
-                this.Draw(sourceId, BuiltinRenderTextureType.CameraTarget, EPostProcessPass.Copy);
-                this.cmdBuffer.EndSample("CRP|Bloom");
-                return;
+                return false;
             }
+
+            this.cmdBuffer.BeginSample("CRP|Bloom");
 
             int fromId = sourceId;
             int toId = this.bloomPyramidId + 1;
             int i = 0;
+            RenderTextureFormat format = this.allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
             for (; i < bloomSettings.maxIterationCount; i++) {
                 if (height < bloomSettings.downscaleLimit || width < bloomSettings.downscaleLimit) {
                     break;
                 }
 
                 int midId = toId - 1;
-                RenderTextureFormat format = this.allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
                 this.cmdBuffer.GetTemporaryRT(midId, width, height, 0, FilterMode.Bilinear, format);
                 this.cmdBuffer.GetTemporaryRT(toId, width, height, 0, FilterMode.Bilinear, format);
                 // 先hor,同时下采样(因为这里分辨率小了)
@@ -151,11 +164,21 @@ namespace CignalRP {
 
             this.cmdBuffer.SetGlobalFloat(bloomIntensityId, bloomSettings.intensity);
             this.cmdBuffer.SetGlobalTexture(postProcessSourceRTId2, sourceId);
-            this.Draw(fromId, BuiltinRenderTextureType.CameraTarget, EPostProcessPass.BloomCombine);
+
+            this.cmdBuffer.GetTemporaryRT(bloomResultId, this.camera.pixelWidth, this.camera.pixelHeight, 0,
+                FilterMode.Bilinear, format);
+            this.Draw(fromId, bloomResultId, EPostProcessPass.BloomCombine);
 
             this.cmdBuffer.ReleaseTemporaryRT(fromId);
 
             this.cmdBuffer.EndSample("CRP|Bloom");
+            return true;
+        }
+
+        private void DoToneMap(int sourceId) {
+            PostProcessSettings.ToneMapSettings toneMapSettings= this.postProcessSettings.toneMapSettings;
+            EPostProcessPass pass = toneMapSettings.mode < 0 ? EPostProcessPass.Copy : EPostProcessPass.ToneMapACES + (int)toneMapSettings.mode;
+            this.Draw(sourceId, BuiltinRenderTextureType.CameraTarget, pass);
         }
     }
 }

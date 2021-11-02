@@ -4,7 +4,8 @@ using UnityEngine.Serialization;
 
 namespace CignalRP {
     [Serializable]
-    public class ShadowSettings {
+    [CreateAssetMenu(menuName = "CRP/ShadowSettings")]
+    public class ShadowSettings : ScriptableObject {
         // 针对相机，不是光源，而且不是到相机位置的距离， 而是cameraview的depth，简单理解就是到camera的nearplane的距离
         [Min(0.01f)] public float maxShadowVSDistance = 100f;
         [FormerlySerializedAs("distanceFace")] [Range(0.001f, 1f)] public float distanceFade = 0.1f;
@@ -47,6 +48,7 @@ namespace CignalRP {
         public DirectionalShadow directionalShadow = new DirectionalShadow() {
             filterMode = EFilterMode.PCF2x2,
             shadowMapAtlasSize = EShadowMapSize._1024,
+
             cascadeCount = 4,
             cascadeRatio1 = 0.1f,
             cascadeRatio2 = 0.25f,

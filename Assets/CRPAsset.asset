@@ -15,17 +15,7 @@ MonoBehaviour:
   useDynamicBatching: 0
   useGPUInstancing: 1
   useSRPBatcher: 1
-  shadowSettings:
-    maxShadowVSDistance: 11.92
-    distanceFade: 0.1
-    directionalShadow:
-      filterMode: 0
-      shadowMapAtlasSize: 1024
-      cascadeCount: 3
-      cascadeRatio1: 0.3
-      cascadeRatio2: 0.4
-      cascadeRatio3: 0.5
-      cascadeFade: 0.1
+  shadowSettings: {fileID: 11400000, guid: c56459e10949dba4392d80eeccc7903f, type: 2}
   postProcessSettings: {fileID: 11400000, guid: 26fb10f943bce8543aa20c062f5358fa,
     type: 2}
-  allowHDR: 0
+  allowHDR: 1

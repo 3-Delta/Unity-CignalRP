@@ -1,6 +1,7 @@
 ﻿#ifndef CRP_POSTPROCESS_INCLUDED
 #define CRP_POSTPROCESS_INCLUDED
 
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Filtering.hlsl"
 
 TEXTURE2D(_PostProcessSource1);
@@ -124,11 +125,27 @@ float4 BloomCombineFragment(Varyings input) : SV_TARGET {
     return float4(low * _BloomIntensity + high, 1.0);
 }
 
-//float4 BloomPrefilterFragment(Varyings input) : SV_TARGET
-//{
-//    float3 color = ApplyBloomThreshold(GetSource1(input.screenUV).rgb);
-//    return float4(color, 1.0);
-//}
+float4 ToneMapACESFragment(Varyings input) : SV_TARGET{
+    float4 color = GetSource1(input.screenUV);
+    color.rgb = min(color.rgb, 60.0);
+    color.rgb = AcesTonemap(unity_to_ACES(color.rgb));
+    return color;
+}
 
+float4 ToneMapNeutralFragment(Varyings input) : SV_TARGET
+{
+    float4 color = GetSource1(input.screenUV);
+    color.rgb = min(color.rgb, 60.0);
+    color.rgb = NeutralTonemap(color.rgb);
+    return color;
+}
+
+float4 ToneMapReinhardFragment(Varyings input) : SV_TARGET
+{
+    float4 color = GetSource1(input.screenUV);
+    color.rgb = min(color.rgb, 60.0);
+    color.rgb /= (color.rgb + 1.0);
+    return color;
+} 
 
 #endif

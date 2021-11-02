@@ -13,9 +13,10 @@ MonoBehaviour:
   m_Name: PostProcessSettingsAsset
   m_EditorClassIdentifier: 
   _shader: {fileID: 4800000, guid: 94c1c78cf75d59c4491702afe6269482, type: 3}
-  _material: {fileID: 0}
   _bloomSettings:
-    maxIterationCount: 0
+    maxIterationCount: 2
     downscaleLimit: 32
     bloomBicubicUpsampling: 1
     intensity: 0.1
+  _toneMapSettings:
+    mode: 0
