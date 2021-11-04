@@ -34,7 +34,6 @@ namespace CignalRP {
         private CameraRendererIni cameraRendererIni;
         private PostProcessSettings postProcessSettings;
         private bool allowHDR;
-        private int lutResolution;
 
         public const int MAX_BLOOM_PYRAMID_COUNT = 5;
 
@@ -79,11 +78,10 @@ namespace CignalRP {
             }
         }
 
-        public void Setup(ref ScriptableRenderContext context, Camera camera, PostProcessSettings postProcessSettings, bool allowHDR, int lutResolution) {
+        public void Setup(ref ScriptableRenderContext context, Camera camera, PostProcessSettings postProcessSettings, bool allowHDR) {
             this.context = context;
             this.camera = camera;
-            this.lutResolution = lutResolution;
-            
+
             this.postProcessSettings = allowHDR ? postProcessSettings : null;
         }
 
@@ -240,22 +238,30 @@ namespace CignalRP {
             this.ConfigChannelMixer();
             this.ConfigSMH();
 
-            int lutHeight = lutResolution;
-            int lutWidth = lutHeight * lutHeight;
-            RenderTextureFormat format = allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
-            // 文章固定使用DefaultHDR
-            cmdBuffer.GetTemporaryRT(colorGradeLUTId, lutWidth, lutHeight, 0, FilterMode.Bilinear, format);
-            cmdBuffer.SetGlobalVector(colorGradeLUTParamsId, new Vector4(lutHeight, 0.5f / lutWidth, 0.5f / lutHeight,
-                lutHeight / (lutHeight - 1f)));
+            int lutResolution = (int)postProcessSettings.lutResolution;
+            if (lutResolution <= 0) {
+                ToneMapSettings toneMapSettings = this.postProcessSettings.toneMapSettings;
+                EPostProcessPass pass = EPostProcessPass.ColorGradeNone + (int)toneMapSettings.mode;
+                this.Draw(sourceId, BuiltinRenderTextureType.CameraTarget, EPostProcessPass.Copy);
+            }
+            else {
+                int lutHeight = lutResolution;
+                int lutWidth = lutHeight * lutHeight;
+                RenderTextureFormat format = allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
+                // 文章固定使用DefaultHDR
+                cmdBuffer.GetTemporaryRT(colorGradeLUTId, lutWidth, lutHeight, 0, FilterMode.Bilinear, RenderTextureFormat.DefaultHDR);
+                cmdBuffer.SetGlobalVector(colorGradeLUTParamsId, new Vector4(lutHeight, 0.5f / lutWidth, 0.5f / lutHeight,
+                    lutHeight / (lutHeight - 1f)));
 
-            ToneMapSettings toneMapSettings = this.postProcessSettings.toneMapSettings;
-            EPostProcessPass pass = EPostProcessPass.ColorGradeNone + (int)toneMapSettings.mode;
-            cmdBuffer.SetGlobalFloat(colorGradeLUTInLogCId, allowHDR && pass != EPostProcessPass.ColorGradeNone ? 1f : 0f);
-            Draw(sourceId, colorGradeLUTId, pass);
+                ToneMapSettings toneMapSettings = this.postProcessSettings.toneMapSettings;
+                EPostProcessPass pass = EPostProcessPass.ColorGradeNone + (int)toneMapSettings.mode;
+                cmdBuffer.SetGlobalFloat(colorGradeLUTInLogCId, allowHDR && pass != EPostProcessPass.ColorGradeNone ? 1f : 0f);
+                Draw(sourceId, colorGradeLUTId, pass);
 
-            cmdBuffer.SetGlobalVector(colorGradeLUTParamsId, new Vector4(1f / lutHeight, 1f / lutHeight, lutHeight - 1f));
-            this.Draw(sourceId, BuiltinRenderTextureType.CameraTarget, EPostProcessPass.ColorGradeFinal);
-            cmdBuffer.ReleaseTemporaryRT(colorGradeLUTId);
+                cmdBuffer.SetGlobalVector(colorGradeLUTParamsId, new Vector4(1f / lutHeight, 1f / lutHeight, lutHeight - 1f));
+                this.Draw(sourceId, BuiltinRenderTextureType.CameraTarget, EPostProcessPass.ColorGradeFinal);
+                cmdBuffer.ReleaseTemporaryRT(colorGradeLUTId);
+            }
         }
     }
 }

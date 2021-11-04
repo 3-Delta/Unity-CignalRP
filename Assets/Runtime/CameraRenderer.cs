@@ -29,7 +29,7 @@ namespace CignalRP {
         private static readonly ShaderTagId LitShaderTagId = new ShaderTagId("CRPLit");
 
         public void Render(ref ScriptableRenderContext context, Camera camera, bool useDynamicBatching, bool useGPUInstancing,
-            ShadowSettings shadowSettings, PostProcessSettings postProcessSettings, bool useHDR, int lutResolution) {
+            ShadowSettings shadowSettings, PostProcessSettings postProcessSettings, bool useHDR) {
             this.camera = camera;
             this.context = context;
             this.postProcessSettings = postProcessSettings;
@@ -54,18 +54,18 @@ namespace CignalRP {
             }
 
             if (camera.cameraType == CameraType.Game) {
-                this.allowHDR = camera.allowHDR;
+                this.allowHDR = useHDR && camera.allowHDR;
             }
 #if UNITY_EDITOR
             else if (camera.cameraType == CameraType.SceneView) {
-                this.allowHDR = SceneView.currentDrawingSceneView.sceneViewState.showImageEffects;
+                this.allowHDR = useHDR && SceneView.currentDrawingSceneView.sceneViewState.showImageEffects;
             }
             else {
                 this.allowHDR = false;
             }
 #endif
 
-            this.PreDraw(shadowSettings, lutResolution);
+            this.PreDraw(shadowSettings);
             this.Draw(useDynamicBatching, useGPUInstancing);
             this.PostDraw();
         }
@@ -87,13 +87,13 @@ namespace CignalRP {
         #endregion
 
         #region Pre/Post Draw
-        private void PreDraw(ShadowSettings shadowSettings, int lutResolution) {
+        private void PreDraw(ShadowSettings shadowSettings) {
             this.cmdBuffer.BeginSample(this.ProfileName);
             ExecuteCmdBuffer(ref this.context, this.cmdBuffer);
 
             // 设置光源,阴影信息, 内含shadowmap的渲染， 所以需要在正式的相机参数等之前先渲染， 否则放在函数最尾巴，则渲染为一片黑色
             this.lighting.Setup(ref this.context, ref this.cullingResults, shadowSettings);
-            this.postProcessStack.Setup(ref this.context, this.camera, this.postProcessSettings, allowHDR, lutResolution);
+            this.postProcessStack.Setup(ref this.context, this.camera, this.postProcessSettings, allowHDR);
 
             // 设置vp矩阵给shader的unity_MatrixVP属性，在Framedebugger中选中某个dc可看
             // vp由CPU构造

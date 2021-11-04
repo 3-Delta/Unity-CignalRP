@@ -1,5 +1,4 @@
 ﻿using System;
-
 using UnityEngine;
 
 namespace CignalRP {
@@ -10,7 +9,9 @@ namespace CignalRP {
 
         [Serializable]
         public struct BloomSettings {
-            [Range(0f, PostProcessStack.MAX_BLOOM_PYRAMID_COUNT)] public int maxIterationCount;
+            [Range(0f, PostProcessStack.MAX_BLOOM_PYRAMID_COUNT)]
+            public int maxIterationCount;
+
             [Min(1f)] public int downscaleLimit;
             public bool bloomBicubicUpsampling;
             [Min(0f)] public float intensity;
@@ -18,7 +19,7 @@ namespace CignalRP {
 
         [Serializable]
         public struct ToneMapSettings {
-            public enum EMode { 
+            public enum EMode {
                 None,
 
                 ACES,
@@ -46,27 +47,27 @@ namespace CignalRP {
             // 饱和度, 置灰的程度
             [Range(-100f, 100f)] public float saturation;
         }
-        
+
         [Serializable]
         public struct WhiteBalanceSettings {
             // 色温
             [Range(-100f, 100f)] public float temperation;
             [Range(-100f, 100f)] public float tint;
         }
-        
+
         [Serializable]
         public struct SplitToneSettings {
             [ColorUsage(false)] public Color shadow, specular;
-            
+
             // shadow和specular的平衡控制
             [Range(-100f, 100f)] public float balance;
         }
-        
+
         [Serializable]
         public struct ChannelMixerSettings {
             public Vector3 red, green, blue;
         }
-        
+
         [Serializable]
         public struct ShadowMidtoneHighlightSettings {
             [ColorUsage(false, true)] public Color shadow, midtone, specular;
@@ -74,6 +75,13 @@ namespace CignalRP {
             [Range(0f, 2f)] public float shadowStart, shadowEnd, specularStart, specularEnd;
         }
 
+        public enum ELUTResolution {
+            _Off,
+            _16 = 16,
+            _32 = 32,
+            _64 = 64,
+        }
+        
         public Material material {
             get {
                 if (this._material == null && this._shader != null) {
@@ -85,49 +93,51 @@ namespace CignalRP {
             }
         }
 
-        [SerializeField]
-        private BloomSettings _bloomSettings;
+        [SerializeField] private BloomSettings _bloomSettings;
         public BloomSettings bloomSettings => this._bloomSettings;
 
-        [SerializeField]
-        private ToneMapSettings _toneMapSettings;
+        [SerializeField] private ToneMapSettings _toneMapSettings;
         public ToneMapSettings toneMapSettings => this._toneMapSettings;
 
-        [SerializeField]
-        private ColorAdjustSettings _colorAdjustSettings = new ColorAdjustSettings {
+        [SerializeField] private ColorAdjustSettings _colorAdjustSettings = new ColorAdjustSettings {
             colorFilter = Color.white,
         };
+
         public ColorAdjustSettings colorAdjustSettings => this._colorAdjustSettings;
 
-        [SerializeField]
-        private WhiteBalanceSettings _whiteBalanceSettings;
+        [SerializeField] private WhiteBalanceSettings _whiteBalanceSettings;
         public WhiteBalanceSettings whiteBalanceSettings => this._whiteBalanceSettings;
 
         [SerializeField] private SplitToneSettings _splitToneSettings = new SplitToneSettings() {
-            shadow =  Color.gray,
+            shadow = Color.gray,
             specular = Color.gray
         };
+
         public SplitToneSettings splitToneSettings => this._splitToneSettings;
 
-        [SerializeField] [Header("其实就是通过矩阵相乘，将color的某些chanel进行结合")]
+        [SerializeField] // [Header("其实就是通过矩阵相乘，将color的某些chanel进行结合")]
         private ChannelMixerSettings _channelMixerSettings = new ChannelMixerSettings() {
             red = Vector3.right,
             green = Vector3.up,
             blue = Vector3.forward
         };
+
         public ChannelMixerSettings channelMixerSettings => this._channelMixerSettings;
 
         [SerializeField] private ShadowMidtoneHighlightSettings _shadowMidtoneHighlightSettings = new ShadowMidtoneHighlightSettings() {
             shadow = Color.white,
             midtone = Color.white,
             specular = Color.white,
-            
+
             shadowStart = 0f,
             shadowEnd = 0.3f,
             specularStart = 0.55f,
             specularEnd = 1f
         };
+
         public ShadowMidtoneHighlightSettings shadowMidtoneHighlightSettings => this._shadowMidtoneHighlightSettings;
+
+        [SerializeField] public ELUTResolution lutResolution = ELUTResolution._32;
         
         public PostProcessSettings() {
             this._bloomSettings.maxIterationCount = 16;
