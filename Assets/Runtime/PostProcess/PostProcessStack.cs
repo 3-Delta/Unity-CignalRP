@@ -1,9 +1,6 @@
-﻿
-using UnityEditor;
-
+﻿using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
-
 using static CignalRP.PostProcessSettings;
 
 namespace CignalRP {
@@ -49,6 +46,20 @@ namespace CignalRP {
         private static readonly int colorAdjustId = Shader.PropertyToID("_ColorAdjust");
         private static readonly int colorFilterId = Shader.PropertyToID("_ColorFilter");
 
+        private static readonly int whiteBalanceId = Shader.PropertyToID("_WhiteBalance");
+        
+        private static readonly int splitToneShadowId = Shader.PropertyToID("_SplitToneShadow");
+        private static readonly int splitToneSpecularId = Shader.PropertyToID("_SplitToneSpecular");
+        
+        private static readonly int channelMixerRedId = Shader.PropertyToID("_ChannelMixerRed");
+        private static readonly int channelMixerGreenId = Shader.PropertyToID("_ChannelMixerGreen");
+        private static readonly int channelMixerBlueId = Shader.PropertyToID("_ChannelMixerBlue");
+        
+        private static readonly int smhShadowId = Shader.PropertyToID("_SMHShadow");
+        private static readonly int smhMidtoneId = Shader.PropertyToID("_SMHMidtone");
+        private static readonly int smhSpecularId = Shader.PropertyToID("_SMHSpecular");
+        private static readonly int smhRangeId = Shader.PropertyToID("_SMHRange");
+
         private int bloomPyramidId;
 
         public bool IsActive {
@@ -84,7 +95,7 @@ namespace CignalRP {
             this.cmdBuffer.SetGlobalTexture(postProcessSourceRTId1, from);
 
             this.cmdBuffer.SetRenderTarget(to, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
-            this.cmdBuffer.DrawProcedural(Matrix4x4.identity, this.postProcessSettings.material, (int)pass, MeshTopology.Triangles, 3);
+            this.cmdBuffer.DrawProcedural(Matrix4x4.identity, this.postProcessSettings.material, (int) pass, MeshTopology.Triangles, 3);
         }
 
         public void Render(int sourceId, bool allowHDR) {
@@ -184,24 +195,63 @@ namespace CignalRP {
         private void ConfigColorAdjust() {
             ColorAdjustSettings colorAdjustSettings = this.postProcessSettings.colorAdjustSettings;
 
-            cmdBuffer.SetGlobalVector(colorAdjustId, 
+            cmdBuffer.SetGlobalVector(colorAdjustId,
                 new Vector4(
-                    Mathf.Pow(2f, colorAdjustSettings.postExposure), 
-                    colorAdjustSettings.contrast * 0.01f + 1f,  // 因为range为[-100, 100],这里其实就是(x+100)/100;
-                    colorAdjustSettings.hueShift * (1f / 360f), 
+                    Mathf.Pow(2f, colorAdjustSettings.postExposure),
+                    colorAdjustSettings.contrast * 0.01f + 1f, // 因为range为[-100, 100],这里其实就是(x+100)/100;
+                    colorAdjustSettings.hueShift * (1f / 360f),
                     colorAdjustSettings.saturation * 0.01f + 1f
-                    )
-                );
+                )
+            );
 
+            // 传入colorFilter.linear, 后处理 shader内部都是按照linear处理的
             cmdBuffer.SetGlobalColor(colorFilterId, colorAdjustSettings.colorFilter.linear);
+        }
+
+        private void ConfigWhiteBalance() {
+            WhiteBalanceSettings whiteBalanceSettings = postProcessSettings.whiteBalanceSettings;
+
+            cmdBuffer.SetGlobalVector(whiteBalanceId, ColorUtils.ColorBalanceToLMSCoeffs(whiteBalanceSettings.temperation, whiteBalanceSettings.tint));
+        }
+        
+        private void ConfigSplitTone() {
+            SplitToneSettings splitToneSettings = postProcessSettings.splitToneSettings;
+
+            Color splitColor = splitToneSettings.shadow;
+            splitColor.a = splitToneSettings.balance * 0.01f;
+            cmdBuffer.SetGlobalColor(splitToneShadowId, splitColor);
+            
+            cmdBuffer.SetGlobalColor(splitToneSpecularId, splitToneSettings.specular);
+        }
+        
+        private void ConfigChannelMixer() {
+            ChannelMixerSettings channelMixerSettings = postProcessSettings.channelMixerSettings;
+            
+            cmdBuffer.SetGlobalVector(channelMixerRedId, channelMixerSettings.red);
+            cmdBuffer.SetGlobalVector(channelMixerGreenId, channelMixerSettings.green);
+            cmdBuffer.SetGlobalVector(channelMixerBlueId, channelMixerSettings.blue);
+        }
+        
+        private void ConfigSMH() {
+            ShadowMidtoneHighlightSettings smh = postProcessSettings.shadowMidtoneHighlightSettings;
+            
+            // .linear表明：编辑器中所有颜色都是被当做gamma颜色看待的
+            cmdBuffer.SetGlobalColor(smhShadowId, smh.shadow.linear);
+            cmdBuffer.SetGlobalColor(smhMidtoneId, smh.midtone.linear);
+            cmdBuffer.SetGlobalColor(smhSpecularId, smh.specular.linear);
+            cmdBuffer.SetGlobalVector(smhRangeId, new Vector4(smh.shadowStart, smh.shadowEnd, smh.specularStart, smh.specularEnd));
         }
 
         // 最终执行tonemap
         private void DoColorGradeAndToneMap(int sourceId) {
             this.ConfigColorAdjust();
+            this.ConfigWhiteBalance();
+            this.ConfigSplitTone();
+            this.ConfigChannelMixer();
+            this.ConfigSMH();
 
             PostProcessSettings.ToneMapSettings toneMapSettings = this.postProcessSettings.toneMapSettings;
-            EPostProcessPass pass = EPostProcessPass.ToneMapNone + (int)toneMapSettings.mode;
+            EPostProcessPass pass = EPostProcessPass.ToneMapNone + (int) toneMapSettings.mode;
             this.Draw(sourceId, BuiltinRenderTextureType.CameraTarget, pass);
         }
     }

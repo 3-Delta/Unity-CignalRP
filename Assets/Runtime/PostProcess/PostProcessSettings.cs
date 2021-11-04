@@ -31,20 +31,47 @@ namespace CignalRP {
 
         [Serializable]
         public struct ColorAdjustSettings {
-            // 曝光度
+            // 曝光度, 就是:颜色 * float
             public float postExposure;
 
             // 对比度, 最亮与最暗的比率
             [Range(-100f, 100f)] public float contrast;
 
-            // 滤镜
+            // 滤镜: color * filterColor
             [ColorUsage(false, true)] public Color colorFilter;
 
             // 色调偏移
             [Range(-180f, 180f)] public float hueShift;
 
-            // 饱和度
+            // 饱和度, 置灰的程度
             [Range(-100f, 100f)] public float saturation;
+        }
+        
+        [Serializable]
+        public struct WhiteBalanceSettings {
+            // 色温
+            [Range(-100f, 100f)] public float temperation;
+            [Range(-100f, 100f)] public float tint;
+        }
+        
+        [Serializable]
+        public struct SplitToneSettings {
+            [ColorUsage(false)] public Color shadow, specular;
+            
+            // shadow和specular的平衡控制
+            [Range(-100f, 100f)] public float balance;
+        }
+        
+        [Serializable]
+        public struct ChannelMixerSettings {
+            public Vector3 red, green, blue;
+        }
+        
+        [Serializable]
+        public struct ShadowMidtoneHighlightSettings {
+            [ColorUsage(false, true)] public Color shadow, midtone, specular;
+
+            [Range(0f, 2f)] public float shadowStart, shadowEnd, specularStart, specularEnd;
         }
 
         public Material material {
@@ -72,6 +99,36 @@ namespace CignalRP {
         };
         public ColorAdjustSettings colorAdjustSettings => this._colorAdjustSettings;
 
+        [SerializeField]
+        private WhiteBalanceSettings _whiteBalanceSettings;
+        public WhiteBalanceSettings whiteBalanceSettings => this._whiteBalanceSettings;
+
+        [SerializeField] private SplitToneSettings _splitToneSettings = new SplitToneSettings() {
+            shadow =  Color.gray,
+            specular = Color.gray
+        };
+        public SplitToneSettings splitToneSettings => this._splitToneSettings;
+
+        [SerializeField] [Header("其实就是通过矩阵相乘，将color的某些chanel进行结合")]
+        private ChannelMixerSettings _channelMixerSettings = new ChannelMixerSettings() {
+            red = Vector3.right,
+            green = Vector3.up,
+            blue = Vector3.forward
+        };
+        public ChannelMixerSettings channelMixerSettings => this._channelMixerSettings;
+
+        [SerializeField] private ShadowMidtoneHighlightSettings _shadowMidtoneHighlightSettings = new ShadowMidtoneHighlightSettings() {
+            shadow = Color.white,
+            midtone = Color.white,
+            specular = Color.white,
+            
+            shadowStart = 0f,
+            shadowEnd = 0.3f,
+            specularStart = 0.55f,
+            specularEnd = 1f
+        };
+        public ShadowMidtoneHighlightSettings shadowMidtoneHighlightSettings => this._shadowMidtoneHighlightSettings;
+        
         public PostProcessSettings() {
             this._bloomSettings.maxIterationCount = 16;
             this._bloomSettings.downscaleLimit = 2;

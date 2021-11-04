@@ -170,18 +170,82 @@ float3 ColorGradeSaturation(float3 color)
     return luminance + diff;
 }
 
+float4 _WhiteBalance;
+
+float3 ColorGradeWhiteBalance(float3 color)
+{
+    color = LinearToLMS(color);
+    color *= _WhiteBalance.rgb;
+    color = LMSToLinear(color);
+    return color;
+}
+
+float4 _SplitToneShadow;
+float4 _SplitToneSpecular;
+
+float3 ColorGradeSplitTone(float3 color)
+{
+    // 故意先转到gamma空间操作，为了适配adobe产品的SplitTone
+    color = PositivePow(color, 1.0 / 2.2);
+    float luminance = Luminance(saturate(color));
+    float rate = saturate(luminance + _SplitToneShadow.w);
+    
+    float3 shadow = lerp(0.5, _SplitToneShadow.rgb, 1 - rate);
+    float3 specular = lerp(0.5, _SplitToneSpecular.rgb, rate);
+    
+    color = SoftLight(color, shadow);
+    color = SoftLight(color, specular);
+    color = PositivePow(color, 2.2);
+    return color;
+}
+
+float4 _ChannelMixerRed;
+float4 _ChannelMixerGreen;
+float4 _ChannelMixerBlue;
+
+float3 ColorGradeChannelMixer(float3 color)
+{
+    // 其实就是通过矩阵相乘，将color的某些chanel进行结合
+    float3x3 m = float3x3(_ChannelMixerRed.rgb, _ChannelMixerGreen.rgb, _ChannelMixerBlue.rgb); 
+    color = mul(m, color);
+    return color;
+}
+
+float4 _SMHShadow;
+float4 _SMHMidtone;
+float4 _SMHSpecular;
+float4 _SMHRange;
+
+float3 ColorGradeSMH(float3 color)
+{
+    float luminance = Luminance(color);
+    
+    float shadowWeight = 1.0 - smoothstep(_SMHRange.x, _SMHRange.y, luminance);
+    float specularWeight = smoothstep(_SMHRange.z, _SMHRange.w, luminance);
+    float midtoneWeight = 1.0 - shadowWeight - specularWeight;
+
+    color = color * _SMHShadow.rgb * shadowWeight +
+        color * _SMHMidtone.rgb * midtoneWeight +
+        color * _SMHSpecular.rgb * specularWeight;
+    return color;
+}
+
 float3 ColorGrade(float3 color)
 {
     color = min(color, 60.0);
 
     color = ColorGradePostExposure(color);
-
+    color = ColorGradeWhiteBalance(color);
     color = ColorGradeContrast(color);
     color = max(color, 0.0);
 
     color = ColorGradeColorFilter(color);
     color = max(color, 0.0);
 
+    color = ColorGradeSplitTone(color);
+    color = ColorGradeChannelMixer(color);
+    color = max(color, 0.0);
+    color = ColorGradeSMH(color);
     color = ColorGradeHueShift(color);
 
     color = ColorGradeSaturation(color);
