@@ -12,10 +12,11 @@ namespace CignalRP {
 
         // tone map 其实就是亮度,也就是rgb都变小
         // https://www.cnblogs.com/crazylights/p/3957566.html
-        ToneMapNone,
-        ToneMapACES,
-        ToneMapNeutral,
-        ToneMapReinhard,
+        ColorGradeNone,
+        ColorGradeACES,
+        ColorGradeNeutral,
+        ColorGradeReinhard,
+        ColorGradeFinal,
 
         // blit
         Copy,
@@ -33,6 +34,7 @@ namespace CignalRP {
         private CameraRendererIni cameraRendererIni;
         private PostProcessSettings postProcessSettings;
         private bool allowHDR;
+        private int lutResolution;
 
         public const int MAX_BLOOM_PYRAMID_COUNT = 5;
 
@@ -47,18 +49,22 @@ namespace CignalRP {
         private static readonly int colorFilterId = Shader.PropertyToID("_ColorFilter");
 
         private static readonly int whiteBalanceId = Shader.PropertyToID("_WhiteBalance");
-        
+
         private static readonly int splitToneShadowId = Shader.PropertyToID("_SplitToneShadow");
         private static readonly int splitToneSpecularId = Shader.PropertyToID("_SplitToneSpecular");
-        
+
         private static readonly int channelMixerRedId = Shader.PropertyToID("_ChannelMixerRed");
         private static readonly int channelMixerGreenId = Shader.PropertyToID("_ChannelMixerGreen");
         private static readonly int channelMixerBlueId = Shader.PropertyToID("_ChannelMixerBlue");
-        
+
         private static readonly int smhShadowId = Shader.PropertyToID("_SMHShadow");
         private static readonly int smhMidtoneId = Shader.PropertyToID("_SMHMidtone");
         private static readonly int smhSpecularId = Shader.PropertyToID("_SMHSpecular");
         private static readonly int smhRangeId = Shader.PropertyToID("_SMHRange");
+
+        private static readonly int colorGradeLUTId = Shader.PropertyToID("_ColorGradeLUT");
+        private static readonly int colorGradeLUTParamsId = Shader.PropertyToID("_ColorGradeLUTParams");
+        private static readonly int colorGradeLUTInLogCId = Shader.PropertyToID("_ColorGradeLUTInLogC");
 
         private int bloomPyramidId;
 
@@ -73,20 +79,12 @@ namespace CignalRP {
             }
         }
 
-        public void Setup(ref ScriptableRenderContext context, Camera camera, PostProcessSettings postProcessSettings) {
+        public void Setup(ref ScriptableRenderContext context, Camera camera, PostProcessSettings postProcessSettings, bool allowHDR, int lutResolution) {
             this.context = context;
             this.camera = camera;
-
-            if (camera.TryGetComponent(out this.cameraRendererIni)) {
-                this.postProcessSettings = camera.cameraType <= CameraType.SceneView && this.cameraRendererIni.usePostProcess ? postProcessSettings : null;
-            }
-            else {
-                this.postProcessSettings = camera.cameraType <= CameraType.SceneView ? postProcessSettings : null;
-            }
-
-#if UNITY_EDITOR
-            this.ApplySceneViewState();
-#endif
+            this.lutResolution = lutResolution;
+            
+            this.postProcessSettings = allowHDR ? postProcessSettings : null;
         }
 
         private void Draw(RenderTargetIdentifier from, RenderTargetIdentifier to, EPostProcessPass pass) {
@@ -95,10 +93,10 @@ namespace CignalRP {
             this.cmdBuffer.SetGlobalTexture(postProcessSourceRTId1, from);
 
             this.cmdBuffer.SetRenderTarget(to, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
-            this.cmdBuffer.DrawProcedural(Matrix4x4.identity, this.postProcessSettings.material, (int) pass, MeshTopology.Triangles, 3);
+            this.cmdBuffer.DrawProcedural(Matrix4x4.identity, this.postProcessSettings.material, (int)pass, MeshTopology.Triangles, 3);
         }
 
-        public void Render(int sourceId, bool allowHDR) {
+        public void Render(int sourceId) {
             this.allowHDR = allowHDR;
 
             if (this.DoBloom(sourceId)) {
@@ -114,14 +112,6 @@ namespace CignalRP {
     }
 
     public partial class PostProcessStack {
-#if UNITY_EDITOR
-        private void ApplySceneViewState() {
-            if (this.camera.cameraType == CameraType.SceneView && !SceneView.currentDrawingSceneView.sceneViewState.showImageEffects) {
-                this.postProcessSettings = null;
-            }
-        }
-#endif
-
         private bool DoBloom(int sourceId) {
             PostProcessSettings.BloomSettings bloomSettings = this.postProcessSettings.bloomSettings;
             int width = this.camera.pixelWidth / 2;
@@ -213,28 +203,28 @@ namespace CignalRP {
 
             cmdBuffer.SetGlobalVector(whiteBalanceId, ColorUtils.ColorBalanceToLMSCoeffs(whiteBalanceSettings.temperation, whiteBalanceSettings.tint));
         }
-        
+
         private void ConfigSplitTone() {
             SplitToneSettings splitToneSettings = postProcessSettings.splitToneSettings;
 
             Color splitColor = splitToneSettings.shadow;
             splitColor.a = splitToneSettings.balance * 0.01f;
             cmdBuffer.SetGlobalColor(splitToneShadowId, splitColor);
-            
+
             cmdBuffer.SetGlobalColor(splitToneSpecularId, splitToneSettings.specular);
         }
-        
+
         private void ConfigChannelMixer() {
             ChannelMixerSettings channelMixerSettings = postProcessSettings.channelMixerSettings;
-            
+
             cmdBuffer.SetGlobalVector(channelMixerRedId, channelMixerSettings.red);
             cmdBuffer.SetGlobalVector(channelMixerGreenId, channelMixerSettings.green);
             cmdBuffer.SetGlobalVector(channelMixerBlueId, channelMixerSettings.blue);
         }
-        
+
         private void ConfigSMH() {
             ShadowMidtoneHighlightSettings smh = postProcessSettings.shadowMidtoneHighlightSettings;
-            
+
             // .linear表明：编辑器中所有颜色都是被当做gamma颜色看待的
             cmdBuffer.SetGlobalColor(smhShadowId, smh.shadow.linear);
             cmdBuffer.SetGlobalColor(smhMidtoneId, smh.midtone.linear);
@@ -250,9 +240,22 @@ namespace CignalRP {
             this.ConfigChannelMixer();
             this.ConfigSMH();
 
-            PostProcessSettings.ToneMapSettings toneMapSettings = this.postProcessSettings.toneMapSettings;
-            EPostProcessPass pass = EPostProcessPass.ToneMapNone + (int) toneMapSettings.mode;
-            this.Draw(sourceId, BuiltinRenderTextureType.CameraTarget, pass);
+            int lutHeight = lutResolution;
+            int lutWidth = lutHeight * lutHeight;
+            RenderTextureFormat format = allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
+            // 文章固定使用DefaultHDR
+            cmdBuffer.GetTemporaryRT(colorGradeLUTId, lutWidth, lutHeight, 0, FilterMode.Bilinear, format);
+            cmdBuffer.SetGlobalVector(colorGradeLUTParamsId, new Vector4(lutHeight, 0.5f / lutWidth, 0.5f / lutHeight,
+                lutHeight / (lutHeight - 1f)));
+
+            ToneMapSettings toneMapSettings = this.postProcessSettings.toneMapSettings;
+            EPostProcessPass pass = EPostProcessPass.ColorGradeNone + (int)toneMapSettings.mode;
+            cmdBuffer.SetGlobalFloat(colorGradeLUTInLogCId, allowHDR && pass != EPostProcessPass.ColorGradeNone ? 1f : 0f);
+            Draw(sourceId, colorGradeLUTId, pass);
+
+            cmdBuffer.SetGlobalVector(colorGradeLUTParamsId, new Vector4(1f / lutHeight, 1f / lutHeight, lutHeight - 1f));
+            this.Draw(sourceId, BuiltinRenderTextureType.CameraTarget, EPostProcessPass.ColorGradeFinal);
+            cmdBuffer.ReleaseTemporaryRT(colorGradeLUTId);
         }
     }
 }

@@ -19,10 +19,29 @@ MonoBehaviour:
     bloomBicubicUpsampling: 1
     intensity: 0.1
   _toneMapSettings:
-    mode: 0
+    mode: 1
   _colorAdjustSettings:
     postExposure: 0
     contrast: 100
     colorFilter: {r: 1, g: 1, b: 1, a: 1}
     hueShift: 180
     saturation: 100
+  _whiteBalanceSettings:
+    temperation: 0
+    tint: 0
+  _splitToneSettings:
+    shadow: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+    specular: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+    balance: 0
+  _channelMixerSettings:
+    red: {x: 0, y: 1, z: 0}
+    green: {x: 1, y: 0, z: 0}
+    blue: {x: 0, y: 0, z: 1}
+  _shadowMidtoneHighlightSettings:
+    shadow: {r: 1, g: 1, b: 1, a: 1}
+    midtone: {r: 1, g: 1, b: 1, a: 1}
+    specular: {r: 1, g: 1, b: 1, a: 1}
+    shadowStart: 0
+    shadowEnd: 0.3
+    specularStart: 0.55
+    specularEnd: 1

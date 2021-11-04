@@ -49,42 +49,52 @@
 
         Pass
         {
-            Name "ToneMap None"
+            Name "ColorGrade None"
 
             HLSLPROGRAM
                 #pragma target 3.5
                 #pragma vertex DefaultVertex
-                #pragma fragment ToneMapNoneFragment
+                #pragma fragment ColorGradeNoneFragment
             ENDHLSL
         }
         Pass
         {
-            Name "ToneMap ACES"
+            Name "ColorGrade ACES"
 
             HLSLPROGRAM
                 #pragma target 3.5
                 #pragma vertex DefaultVertex
-                #pragma fragment ToneMapACESFragment
+                #pragma fragment ColorGradeACESFragment
             ENDHLSL
         }
         Pass
         {
-            Name "ToneMap Neutral"
+            Name "ColorGrade Neutral"
 
             HLSLPROGRAM
                 #pragma target 3.5
                 #pragma vertex DefaultVertex
-                #pragma fragment ToneMapNeutralFragment
+                #pragma fragment ColorGradeNeutralFragment
             ENDHLSL
         }
         Pass
         {
-            Name "ToneMap Reinhard"
+            Name "ColorGrade Reinhard"
 
             HLSLPROGRAM
                 #pragma target 3.5
                 #pragma vertex DefaultVertex
-                #pragma fragment ToneMapReinhardFragment
+                #pragma fragment ColorGradeReinhardFragment
+            ENDHLSL
+        }
+        Pass
+        {
+            Name "ColorGrade Final"
+
+            HLSLPROGRAM
+                #pragma target 3.5
+                #pragma vertex DefaultVertex
+                #pragma fragment FinalFragment
             ENDHLSL
         }
 
