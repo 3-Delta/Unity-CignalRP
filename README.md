@@ -7,6 +7,7 @@
 3. hsr对于渲染物体顺序影响？是否可以在渲染不透明物体的时候，不在cpu端进行从近到远的排序？
 4. normalbias推近多少合适？
 5. 每个光源对应的layer设计？
+6. 为什么使用hdr时候，会对于gamma/linear有影响？也就是会导致画面变暗？
 
 学习资料:
 1. https://edu.uwa4d.com/course-intro/0/282?purchased=true 
