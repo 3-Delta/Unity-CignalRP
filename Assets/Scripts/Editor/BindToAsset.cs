@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using UnityEditor.Rendering;
 
 // https://github.com/Maligan/unity-subassets-drag-and-drop
 namespace UnityEditor {
@@ -56,6 +57,14 @@ namespace UnityEditor {
                 DragAndDrop.AcceptDrag();
                 Event.current.Use();
             }
+            // else if (Event.current.keyCode == KeyCode.Delete) {
+            //     foreach (var asset in Selection.objects) {
+            //         if (asset != null) {
+            //             // todo 为什么asset总是null???
+            //             AssetDatabase.RemoveObjectFromAsset(asset);
+            //         }
+            //     }
+            // }
         }
 
         private static void Move(IEnumerable<UnityEngine.Object> sources, string destinationPath) {
