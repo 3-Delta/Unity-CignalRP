@@ -38,8 +38,8 @@ MonoBehaviour:
   useGPUInstancing: 1
   useSRPBatcher: 1
   shadowSettings: {fileID: -7423295556669773517}
-  postProcessSettings: {fileID: 5314368177112552238}
-  allowHDR: 1
+  postProcessSettings: {fileID: 0}
+  allowHDR: 0
 --- !u!114 &5314368177112552238
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -52,7 +52,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 416ba564fe64dfa4dbd8dd579d1eddbd, type: 3}
   m_Name: PostProcessSettings
   m_EditorClassIdentifier: 
-  enable: 1
+  enable: 0
   _shader: {fileID: 4800000, guid: 94c1c78cf75d59c4491702afe6269482, type: 3}
   _bloomSettings:
     maxIterationCount: 2

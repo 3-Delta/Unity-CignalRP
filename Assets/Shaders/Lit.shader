@@ -11,9 +11,12 @@
 		[Toggle(_RECEIVE_SHADOWS)] _ReceiveShadows ("Receive Shadows", Float) = 1
 		[KeywordEnum(Clip, Dither, Off)] _Shadows ("Shadows", Float) = 0
 		
+    	// metallic, occulation, detail, smoothness
+    	[NoScaleOffset] _MaskMap("Mask (MODS)", 2D) = "white" {}
+    	
 		_Metallic ("Metallic", Range(0, 1)) = 0
 		_Smoothness ("Smoothness", Range(0, 1)) = 0.5
-		
+
 		[Toggle(_PREMULTIPLY_ALPHA)] _PremulAlpha ("Premultiply Alpha", Float) = 0
         
         [Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend ("Src Blend", Float) = 1

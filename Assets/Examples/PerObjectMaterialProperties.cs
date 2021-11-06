@@ -50,6 +50,9 @@ public class PerObjectMaterialProperties : MonoBehaviour {
     private float metallic = 0f;
     [SerializeField, Range(0f, 1f)]
     private float smoothness = 0.5f;
+    
+    [SerializeField, ColorUsage(false, true)]
+    Color emissionColor = Color.black;
 
     private void Awake() {
         this.OnValidate();
