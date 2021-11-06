@@ -81,13 +81,14 @@ namespace CignalRP {
         public void Setup(ref ScriptableRenderContext context, Camera camera, PostProcessSettings postProcessSettings, bool allowHDR) {
             this.context = context;
             this.camera = camera;
-
+            this.allowHDR = allowHDR;
+            
             this.postProcessSettings = allowHDR ? postProcessSettings : null;
         }
 
         private void Draw(RenderTargetIdentifier from, RenderTargetIdentifier to, EPostProcessPass pass) {
             // 传递给shader
-            // 这里其实只是 重新设置 gpu的texture: _PostProcessSource
+            // 这里其实只是 重新设置 gpu的texture: _PostProcessSource1
             this.cmdBuffer.SetGlobalTexture(postProcessSourceRTId1, from);
 
             this.cmdBuffer.SetRenderTarget(to, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
@@ -95,8 +96,6 @@ namespace CignalRP {
         }
 
         public void Render(int sourceId) {
-            this.allowHDR = allowHDR;
-
             if (this.DoBloom(sourceId)) {
                 this.DoColorGradeAndToneMap(bloomResultId);
                 this.cmdBuffer.ReleaseTemporaryRT(bloomResultId);
@@ -104,7 +103,7 @@ namespace CignalRP {
             else {
                 this.DoColorGradeAndToneMap(sourceId);
             }
-
+            
             CameraRenderer.ExecuteCmdBuffer(ref this.context, this.cmdBuffer);
         }
     }
@@ -165,8 +164,7 @@ namespace CignalRP {
             else {
                 this.cmdBuffer.ReleaseTemporaryRT(this.bloomPyramidId);
             }
-
-
+            
             this.cmdBuffer.SetGlobalFloat(bloomIntensityId, bloomSettings.intensity);
             this.cmdBuffer.SetGlobalTexture(postProcessSourceRTId2, sourceId);
 

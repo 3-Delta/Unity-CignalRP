@@ -38,6 +38,7 @@ namespace CignalRP {
                 if (cameraIni.rendererFrequency <= 0) {
                     cameraIni.rendererFrequency = -1;
                 }
+
                 if (cameraIni.rendererFrequency != -1) {
                     if (Time.frameCount % cameraIni.rendererFrequency == 0) {
                         return;
@@ -64,10 +65,27 @@ namespace CignalRP {
                 this.allowHDR = false;
             }
 #endif
+            
+            ProfileSample(ref context, cmdBuffer, true, this.ProfileName);
 
+            #region 绘制Shadow
             this.PreDraw(shadowSettings);
+            #endregion
+
+            #region 绘制Camera常规内容
+            ProfileSample(ref context, cmdBuffer, true, this.ProfileName);
             this.Draw(useDynamicBatching, useGPUInstancing);
+            ProfileSample(ref context, cmdBuffer, false, this.ProfileName);
+            #endregion
+
+            #region 绘制 后处理
             this.PostDraw();
+            #endregion
+
+            ProfileSample(ref context, cmdBuffer, false, this.ProfileName);
+
+            // submit之后才会开始绘制本桢
+            this.context.Submit();
         }
 
         #region Cull
@@ -88,12 +106,8 @@ namespace CignalRP {
 
         #region Pre/Post Draw
         private void PreDraw(ShadowSettings shadowSettings) {
-            this.cmdBuffer.BeginSample(this.ProfileName);
-            ExecuteCmdBuffer(ref this.context, this.cmdBuffer);
-
             // 设置光源,阴影信息, 内含shadowmap的渲染， 所以需要在正式的相机参数等之前先渲染， 否则放在函数最尾巴，则渲染为一片黑色
             this.lighting.Setup(ref this.context, ref this.cullingResults, shadowSettings);
-            this.postProcessStack.Setup(ref this.context, this.camera, this.postProcessSettings, allowHDR);
 
             // 设置vp矩阵给shader的unity_MatrixVP属性，在Framedebugger中选中某个dc可看
             // vp由CPU构造
@@ -128,20 +142,13 @@ namespace CignalRP {
             // 为了Profiler以及Framedebugger中捕获
             // ClearRendererTarget会自动收缩在CmdBufferName下面
             this.cmdBuffer.ClearRenderTarget(clearDepth, clearColor, bgColor);
-
-            this.cmdBuffer.BeginSample(this.ProfileName);
-            CameraRenderer.ExecuteCmdBuffer(ref this.context, this.cmdBuffer);
-
-            this.cmdBuffer.EndSample(this.ProfileName);
         }
 
         private void PostDraw() {
-            this.cmdBuffer.EndSample(this.ProfileName);
-            CameraRenderer.ExecuteCmdBuffer(ref this.context, this.cmdBuffer);
-
 #if UNITY_EDITOR
             this.DrawGizmosBeforeFX();
 #endif
+            this.postProcessStack.Setup(ref this.context, this.camera, this.postProcessSettings, allowHDR);
             if (this.postProcessStack.IsActive) {
                 this.postProcessStack.Render(FramebufferId);
             }
@@ -154,14 +161,23 @@ namespace CignalRP {
             if (this.postProcessStack.IsActive) {
                 this.cmdBuffer.ReleaseTemporaryRT(FramebufferId);
             }
-
-            // submit之后才会开始绘制本桢
-            this.context.Submit();
         }
         #endregion
 
         #region Draw
         // 内联优化
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ProfileSample(ref ScriptableRenderContext context, CommandBuffer cmdBuffer, bool begin, string sampleName) {
+            if (begin) {
+                cmdBuffer.BeginSample(sampleName);
+            }
+            else {
+                cmdBuffer.EndSample(sampleName);
+            }
+
+            ExecuteCmdBuffer(ref context, cmdBuffer);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void ExecuteCmdBuffer(ref ScriptableRenderContext context, CommandBuffer cmdBuffer) {
             context.ExecuteCommandBuffer(cmdBuffer);
