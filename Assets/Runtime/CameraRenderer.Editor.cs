@@ -1,6 +1,5 @@
 ﻿#if UNITY_EDITOR
 using UnityEditor;
-
 using UnityEngine;
 using UnityEngine.Profiling;
 using UnityEngine.Rendering;
@@ -15,12 +14,13 @@ namespace CignalRP {
             new ShaderTagId("Vertex"),
             new ShaderTagId("VertexLMRGBM"),
             new ShaderTagId("VertexLM"),
-            
+
             // 《入门紧要》 p183
             // new ShaderTagId("ForwardAdd"),
             // new ShaderTagId("Deferred"),
             // new ShaderTagId("PrepassFinal"),
         };
+
         private static Material ErrorMaterial;
 
         private void DrawUnsupported() {
@@ -34,6 +34,7 @@ namespace CignalRP {
             for (int i = 1, length = UnsupportedShaderTagIds.Length; i < length; i++) {
                 drawingSettings.SetShaderPassName(i, UnsupportedShaderTagIds[i]);
             }
+
             // 覆盖原始的material，使用errorMaterial
             // todo： URP中的overrideMaterial估计也是这样使用的
             drawingSettings.overrideMaterial = ErrorMaterial;
@@ -41,7 +42,7 @@ namespace CignalRP {
             var filteringSetttings = FilteringSettings.defaultValue;
             context.DrawRenderers(cullingResults, ref drawingSettings, ref filteringSetttings);
         }
-        
+
         private void DrawGizmosBeforeFX() {
             if (Handles.ShouldRenderGizmos()) {
                 context.DrawGizmos(camera, GizmoSubset.PreImageEffects);
@@ -66,10 +67,6 @@ namespace CignalRP {
         }
 
         private void Prepare() {
-            Profiler.BeginSample("Editor Only");
-            this.cmdBuffer.name = this.ProfileName = "CRP|" + this.camera.name;
-            Profiler.EndSample();
-
             this.PrepareForSceneWindow();
         }
     }

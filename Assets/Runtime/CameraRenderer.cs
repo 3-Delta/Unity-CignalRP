@@ -1,12 +1,13 @@
 ﻿using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 
 namespace CignalRP {
     // 负责单个相机的渲染
     public partial class CameraRenderer {
-        public string ProfileName { get; protected set; } = "CRP|CameraRender";
+        public const string ProfileName = "->CameraRender";
         public CommandBuffer cmdBuffer { get; protected set; } = new CommandBuffer();
 
         public Camera camera { get; protected set; } = null;
@@ -65,24 +66,40 @@ namespace CignalRP {
                 this.allowHDR = false;
             }
 #endif
-            
-            ProfileSample(ref context, cmdBuffer, true, this.ProfileName);
+
+            string cameraProfileName = "CRP|" + this.camera.name;
+#if UNITY_EDITOR
+            Profiler.BeginSample("Editor Only");
+            this.cmdBuffer.name = cameraProfileName;
+            Profiler.EndSample();
+#endif
+            ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, cameraProfileName);
 
             #region 绘制Shadow
             this.PreDraw(shadowSettings);
             #endregion
 
             #region 绘制Camera常规内容
-            ProfileSample(ref context, cmdBuffer, true, this.ProfileName);
+#if UNITY_EDITOR
+            Profiler.BeginSample("Editor Only");
+            this.cmdBuffer.name = ProfileName;
+            Profiler.EndSample();
+#endif
+            ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, ProfileName);
             this.Draw(useDynamicBatching, useGPUInstancing);
-            ProfileSample(ref context, cmdBuffer, false, this.ProfileName);
+            ProfileSample(ref context, cmdBuffer, EProfileStep.End, ProfileName);
             #endregion
 
+#if UNITY_EDITOR
+            Profiler.BeginSample("Editor Only");
+            this.cmdBuffer.name = cameraProfileName;
+            Profiler.EndSample();
+#endif
             #region 绘制 后处理
             this.PostDraw();
             #endregion
 
-            ProfileSample(ref context, cmdBuffer, false, this.ProfileName);
+            ProfileSample(ref context, cmdBuffer, EProfileStep.End, cameraProfileName);
 
             // submit之后才会开始绘制本桢
             this.context.Submit();
@@ -108,6 +125,7 @@ namespace CignalRP {
         private void PreDraw(ShadowSettings shadowSettings) {
             // 设置光源,阴影信息, 内含shadowmap的渲染， 所以需要在正式的相机参数等之前先渲染， 否则放在函数最尾巴，则渲染为一片黑色
             this.lighting.Setup(ref this.context, ref this.cullingResults, shadowSettings);
+            this.postProcessStack.Setup(ref this.context, this.camera, this.postProcessSettings, allowHDR);
 
             // 设置vp矩阵给shader的unity_MatrixVP属性，在Framedebugger中选中某个dc可看
             // vp由CPU构造
@@ -148,7 +166,6 @@ namespace CignalRP {
 #if UNITY_EDITOR
             this.DrawGizmosBeforeFX();
 #endif
-            this.postProcessStack.Setup(ref this.context, this.camera, this.postProcessSettings, allowHDR);
             if (this.postProcessStack.IsActive) {
                 this.postProcessStack.Render(FramebufferId);
             }
@@ -164,14 +181,18 @@ namespace CignalRP {
         }
         #endregion
 
-        #region Draw
+        public enum EProfileStep {
+            Begin,
+            End,
+        }
+
         // 内联优化
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ProfileSample(ref ScriptableRenderContext context, CommandBuffer cmdBuffer, bool begin, string sampleName) {
-            if (begin) {
+        public static void ProfileSample(ref ScriptableRenderContext context, CommandBuffer cmdBuffer, EProfileStep step, string sampleName) {
+            if (step == EProfileStep.Begin) {
                 cmdBuffer.BeginSample(sampleName);
             }
-            else {
+            else if(step == EProfileStep.End) {
                 cmdBuffer.EndSample(sampleName);
             }
 
@@ -184,6 +205,7 @@ namespace CignalRP {
             cmdBuffer.Clear();
         }
 
+        #region Draw
         private void Draw(bool useDynamicBatching, bool useGPUInstancing) {
             // step1: 绘制不透明物体
             var sortingSettings = new SortingSettings() {
