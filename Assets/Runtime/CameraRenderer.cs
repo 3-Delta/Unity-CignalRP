@@ -36,12 +36,12 @@ namespace CignalRP {
             this.postProcessSettings = postProcessSettings;
 
             if (camera.TryGetComponent(out CameraRendererIni cameraIni)) {
-                if (cameraIni.rendererFrequency <= 0) {
-                    cameraIni.rendererFrequency = -1;
+                if (cameraIni.cameraSettings.rendererFrequency <= 0) {
+                    cameraIni.cameraSettings.rendererFrequency = -1;
                 }
 
-                if (cameraIni.rendererFrequency != -1) {
-                    if (Time.frameCount % cameraIni.rendererFrequency == 0) {
+                if (cameraIni.cameraSettings.rendererFrequency != -1) {
+                    if (Time.frameCount % cameraIni.cameraSettings.rendererFrequency == 0) {
                         return;
                     }
                 }

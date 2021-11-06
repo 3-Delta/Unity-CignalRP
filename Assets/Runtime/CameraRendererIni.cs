@@ -1,9 +1,19 @@
 ﻿using UnityEngine;
 
 namespace CignalRP {
+    [DisallowMultipleComponent]
+    [RequireComponent(typeof(Camera))]
     public class CameraRendererIni : MonoBehaviour {
-        // 相机渲染帧率
-        public int rendererFrequency = -1;
-        public bool usePostProcess = false;
+        [SerializeField] private CameraSettings _cameraSettings;
+
+        public CameraSettings cameraSettings {
+            get {
+                if (_cameraSettings == null) {
+                    _cameraSettings = new CameraSettings();
+                }
+
+                return _cameraSettings;
+            }
+        }
     }
 }

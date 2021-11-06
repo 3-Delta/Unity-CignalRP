@@ -128,8 +128,8 @@ float4 BloomCombineFragment(Varyings input) : SV_TARGET
         low = GetSource1(input.screenUV).rgb;
     }
 
-    float3 high = GetSource2(input.screenUV).rgb;
-    return float4(low * _BloomIntensity + high, 1.0);
+    float4 high = GetSource2(input.screenUV);
+    return float4(low * _BloomIntensity + high.rgb, high.a);
 }
 
 float Luminance(float3 color, bool useACES)

@@ -31,7 +31,7 @@ namespace CignalRP {
 
         private ScriptableRenderContext context;
         private Camera camera;
-        private CameraRendererIni cameraRendererIni;
+        private CameraRendererIni cameraIni;
         private PostProcessSettings postProcessSettings;
         private bool allowHDR;
 
@@ -65,10 +65,27 @@ namespace CignalRP {
         private static readonly int colorGradeLUTParamsId = Shader.PropertyToID("_ColorGradeLUTParams");
         private static readonly int colorGradeLUTInLogCId = Shader.PropertyToID("_ColorGradeLUTInLogC");
 
+        private static readonly int finalSrcBlendId = Shader.PropertyToID("_FinalSrcBlend");
+        private static readonly int finalDestBlendId = Shader.PropertyToID("_FinalDestBlend");
+
         private int bloomPyramidId;
 
         public bool IsActive {
-            get { return this.postProcessSettings != null && this.postProcessSettings.enable; }
+            get { return this.postProcessSettings != null && this.postProcessSettings.enable && cameraEnablePostProcess; }
+        }
+
+        public bool cameraEnablePostProcess {
+            get { return cameraSettings.enablePostProcess; }
+        }
+
+        public CameraSettings cameraSettings {
+            get {
+                if (cameraIni != null) {
+                    return cameraIni.cameraSettings;
+                }
+
+                return CameraSettings.Default;
+            }
         }
 
         public PostProcessStack() {
@@ -81,18 +98,35 @@ namespace CignalRP {
         public void Setup(ref ScriptableRenderContext context, Camera camera, PostProcessSettings postProcessSettings, bool allowHDR) {
             this.context = context;
             this.camera = camera;
+            this.cameraIni = camera.GetComponent<CameraRendererIni>();
             this.allowHDR = allowHDR;
-            
+
             this.postProcessSettings = allowHDR ? postProcessSettings : null;
+            if (cameraSettings.overridePostProcess) {
+                this.postProcessSettings = cameraSettings.postProcessSettings;
+            }
         }
 
         private void Draw(RenderTargetIdentifier from, RenderTargetIdentifier to, EPostProcessPass pass) {
             // 传递给shader
             // 这里其实只是 重新设置 gpu的texture: _PostProcessSource1
             this.cmdBuffer.SetGlobalTexture(postProcessSourceRTId1, from);
-
             this.cmdBuffer.SetRenderTarget(to, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             this.cmdBuffer.DrawProcedural(Matrix4x4.identity, this.postProcessSettings.material, (int)pass, MeshTopology.Triangles, 3);
+        }
+
+        private void DrawFinal(RenderTargetIdentifier from) {
+            this.cmdBuffer.SetGlobalFloat(finalSrcBlendId, (float)cameraSettings.finalBlendMode.src);
+            this.cmdBuffer.SetGlobalFloat(finalDestBlendId, (float)cameraSettings.finalBlendMode.dest);
+            this.cmdBuffer.SetGlobalTexture(postProcessSourceRTId1, from);
+
+            // 如果不设置SetViewport，那么后camera的画面会覆盖前camera的画面，即使后camera设置来正确的rt的size,但是会将这个size的画面铺满整个camera
+            // 不是是屏幕映射阶段。所以需要设置正确的viewport
+            this.cmdBuffer.SetViewport(camera.pixelRect);
+            // blend的时候,需要从framebuffer中加载colorbuffer, 所以Load
+            var loadAction = cameraSettings.finalBlendMode.dest == BlendMode.Zero ? RenderBufferLoadAction.DontCare : RenderBufferLoadAction.Load;
+            this.cmdBuffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget, loadAction, RenderBufferStoreAction.Store);
+            this.cmdBuffer.DrawProcedural(Matrix4x4.identity, this.postProcessSettings.material, (int)EPostProcessPass.ColorGradeFinal, MeshTopology.Triangles, 3);
         }
 
         public void Render(int sourceId) {
@@ -103,7 +137,7 @@ namespace CignalRP {
             else {
                 this.DoColorGradeAndToneMap(sourceId);
             }
-            
+
             CameraRenderer.ExecuteCmdBuffer(ref this.context, this.cmdBuffer);
         }
     }
@@ -164,7 +198,7 @@ namespace CignalRP {
             else {
                 this.cmdBuffer.ReleaseTemporaryRT(this.bloomPyramidId);
             }
-            
+
             this.cmdBuffer.SetGlobalFloat(bloomIntensityId, bloomSettings.intensity);
             this.cmdBuffer.SetGlobalTexture(postProcessSourceRTId2, sourceId);
 
@@ -230,19 +264,23 @@ namespace CignalRP {
 
         // 最终执行tonemap
         private void DoColorGradeAndToneMap(int sourceId) {
-            this.ConfigColorAdjust();
-            this.ConfigWhiteBalance();
-            this.ConfigSplitTone();
-            this.ConfigChannelMixer();
-            this.ConfigSMH();
-
             int lutResolution = (int)postProcessSettings.lutResolution;
             if (lutResolution <= 0) {
+                this.cmdBuffer.BeginSample("CRP|PostProcess Final");
                 ToneMapSettings toneMapSettings = this.postProcessSettings.toneMapSettings;
                 EPostProcessPass pass = EPostProcessPass.ColorGradeNone + (int)toneMapSettings.mode;
                 this.Draw(sourceId, BuiltinRenderTextureType.CameraTarget, EPostProcessPass.Copy);
+                this.cmdBuffer.EndSample("CRP|PostProcess Final");
             }
             else {
+                this.cmdBuffer.BeginSample("CRP|ColorGrade");
+
+                this.ConfigColorAdjust();
+                this.ConfigWhiteBalance();
+                this.ConfigSplitTone();
+                this.ConfigChannelMixer();
+                this.ConfigSMH();
+
                 int lutHeight = lutResolution;
                 int lutWidth = lutHeight * lutHeight;
                 RenderTextureFormat format = allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
@@ -257,8 +295,13 @@ namespace CignalRP {
                 Draw(sourceId, colorGradeLUTId, pass);
 
                 cmdBuffer.SetGlobalVector(colorGradeLUTParamsId, new Vector4(1f / lutHeight, 1f / lutHeight, lutHeight - 1f));
-                this.Draw(sourceId, BuiltinRenderTextureType.CameraTarget, EPostProcessPass.ColorGradeFinal);
+                this.cmdBuffer.EndSample("CRP|ColorGrade");
+
+                this.cmdBuffer.BeginSample("CRP|PostProcess Final");
+                DrawFinal(sourceId);
                 cmdBuffer.ReleaseTemporaryRT(colorGradeLUTId);
+
+                this.cmdBuffer.EndSample("CRP|PostProcess Final");
             }
         }
     }

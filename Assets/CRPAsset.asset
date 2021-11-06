@@ -1,5 +1,27 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-7423295556669773517
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cf41e08fe54c1c1489b5a6ee22b9379a, type: 3}
+  m_Name: ShadowSettings
+  m_EditorClassIdentifier: 
+  maxShadowVSDistance: 20
+  distanceFade: 0.1
+  directionalShadow:
+    filterMode: 0
+    shadowMapAtlasSize: 1024
+    cascadeCount: 4
+    cascadeRatio1: 0.1
+    cascadeRatio2: 0.25
+    cascadeRatio3: 0.5
+    cascadeFade: 0.1
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -30,6 +52,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 416ba564fe64dfa4dbd8dd579d1eddbd, type: 3}
   m_Name: PostProcessSettings
   m_EditorClassIdentifier: 
+  enable: 1
   _shader: {fileID: 4800000, guid: 94c1c78cf75d59c4491702afe6269482, type: 3}
   _bloomSettings:
     maxIterationCount: 2
@@ -63,26 +86,4 @@ MonoBehaviour:
     shadowEnd: 0.3
     specularStart: 0.55
     specularEnd: 1
-  lutResolution: 0
---- !u!114 &-7423295556669773517
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cf41e08fe54c1c1489b5a6ee22b9379a, type: 3}
-  m_Name: ShadowSettings
-  m_EditorClassIdentifier: 
-  maxShadowVSDistance: 20
-  distanceFade: 0.1
-  directionalShadow:
-    filterMode: 0
-    shadowMapAtlasSize: 1024
-    cascadeCount: 4
-    cascadeRatio1: 0.1
-    cascadeRatio2: 0.25
-    cascadeRatio3: 0.5
-    cascadeFade: 0.1
+  lutResolution: 64

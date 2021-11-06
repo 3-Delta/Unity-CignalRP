@@ -33,21 +33,27 @@ TEXTURE2D(_BaseMap);
 SAMPLER(sampler_BaseMap);
 
 UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
-    UNITY_DEFINE_INSTANCED_PROP(float4, _BaseMap_ST)
-    UNITY_DEFINE_INSTANCED_PROP(float4, _BaseColor)
-    UNITY_DEFINE_INSTANCED_PROP(float, _Cutoff)
+UNITY_DEFINE_INSTANCED_PROP(float4, _BaseMap_ST)
+UNITY_DEFINE_INSTANCED_PROP(float4, _BaseColor)
+UNITY_DEFINE_INSTANCED_PROP(float, _Cutoff)
 UNITY_INSTANCING_BUFFER_END(UnityPerMaterial)
 
-struct Attributes {
+struct Attributes
+{
     float3 positionOS : POSITION;
+    float4 color : COLOR;
     float2 baseUV : TEXCOORD0;
 
     // 其实就是：uint instanceID; 这里是针对每个顶点做了和显存渲染数据的联系
-    UNITY_VERTEX_INPUT_INSTANCE_ID 
+    UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
-struct Varyings {
+struct Varyings
+{
     float4 positionCS : SV_POSITION;
+#if defined(_VERTEX_COLOR)
+    float4 color : VAR_COLOR;
+#endif
     float2 baseUV : VAR_BASE_UV;
     UNITY_VERTEX_INPUT_INSTANCE_ID
 };
@@ -66,7 +72,10 @@ Varyings UnlitPassVertex(Attributes input)
     UNITY_TRANSFER_INSTANCE_ID(input, output);
     float3 positionWS = TransformObjectToWorld(input.positionOS);
     output.positionCS = TransformWorldToHClip(positionWS);
-    
+
+#if defined(_VERTEX_COLOR)
+    output.color = input.color;
+#endif
     float4 baseST = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseMap_ST);
     output.baseUV = input.baseUV * baseST.xy + baseST.zw;
     return output;
@@ -82,9 +91,9 @@ float4 UnlitPassFragment(Varyings input) : SV_Target
     float4 base = baseMap * baseColor;
 
     #if defined(_CLIPPING)
-        clip(base.a - UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff));
+    clip(base.a - UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff));
     #endif
-    
+
     return base;
 }
 

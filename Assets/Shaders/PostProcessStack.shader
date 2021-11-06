@@ -6,6 +6,7 @@
         
         ZTest Always
         ZWrite off
+        // 默认是one zero的混合模式，也就是后者直接覆盖前者
         Blend one zero
         
         // 第一次见这个关键字
@@ -90,6 +91,7 @@
         Pass
         {
             Name "ColorGrade Final"
+            Blend [_FinalSrcBlend] [_FinalDestBlend]
 
             HLSLPROGRAM
                 #pragma target 3.5
