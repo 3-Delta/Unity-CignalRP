@@ -4,6 +4,7 @@ using UnityEngine;
 namespace CignalRP {
     [CreateAssetMenu(menuName = "CRP/PostProcessSettingsAsset")]
     public class PostProcessSettings : ScriptableObject {
+        public bool enable = true;
         [SerializeField] private Shader _shader;
         private Material _material;
 

@@ -68,7 +68,7 @@ namespace CignalRP {
         private int bloomPyramidId;
 
         public bool IsActive {
-            get { return this.postProcessSettings != null; }
+            get { return this.postProcessSettings != null && this.postProcessSettings.enable; }
         }
 
         public PostProcessStack() {
