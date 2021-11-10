@@ -15,6 +15,12 @@ CBUFFER_START(UnityPerDraw)
 	real4 unity_WorldTransformParams;
 
 	// 如果将vp. v矩阵放到这里，则会出现clip渲染不正确的现象
+
+	// lightmap相关
+	// 给vertex的每个lightmapUV传递scaleoffset, 为什么不在顶点属性中传递呢?
+	// 对于纹理的scaleoffset好像也是外部传递的, 因为一个纹理中,所有的scaleoffset都应该是一样的,而不是每个vertex不一样
+	float4 unity_LightmapST; 
+	float4 unity_DynamicLightmapST;
 CBUFFER_END
 
 float4x4 unity_MatrixV;

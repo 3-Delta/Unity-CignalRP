@@ -43,7 +43,8 @@
             
             #pragma shader_feature _RECEIVE_SHADOWS
 			#pragma multi_compile _ _DIRECTIONAL_PCF3 _DIRECTIONAL_PCF5 _DIRECTIONAL_PCF7
-           
+
+			#pragma multi_compile _ LIGHTMAP_ON
             
             // 支持gpu instance, 会有宏INSTANCE_ON定义
             #pragma multi_compile_instancing

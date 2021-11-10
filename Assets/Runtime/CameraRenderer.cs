@@ -214,7 +214,9 @@ namespace CignalRP {
             };
             var drawingSettings = new DrawingSettings(UnlitShaderTagId, sortingSettings) {
                 enableDynamicBatching = useDynamicBatching,
-                enableInstancing = useGPUInstancing
+                enableInstancing = useGPUInstancing,
+                // 传递obj在lightmap中的uv
+                perObjectData = PerObjectData.Lightmaps
             };
             // 渲染CRP光照的pass
             drawingSettings.SetShaderPassName(1, LitShaderTagId);

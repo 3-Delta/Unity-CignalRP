@@ -4,6 +4,7 @@
 #include "Surface.hlsl"
 #include "Light.hlsl"
 #include "BRDF.hlsl"
+#include "GI.hlsl"
 
 // https://zhuanlan.zhihu.com/p/393174880
 float3 IncomingLight(FragSurface surface, Light light)
@@ -24,10 +25,10 @@ float3 GetLighting(FragSurface surface, BRDF brdf, Light light)
     return incomeLight * cookTorrance;
 }
 
-float3 GetLighting(FragSurface surface, BRDF brdf)
+float3 GetLighting(FragSurface surface, BRDF brdf, GI gi)
 {
     ShadowData shadowData = GetShadowData(surface);
-    float color = 0;
+    float color = gi.diffuse;
     // 一个片元受到多个光照影响，就是color叠加
     for(int i = 0, dirLightCount = GetDirectionalLightCount(); i < dirLightCount; ++ i)
     {
