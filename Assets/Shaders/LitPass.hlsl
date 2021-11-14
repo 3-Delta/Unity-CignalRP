@@ -85,9 +85,8 @@ float4 LitPassFragment(Varyings input) : SV_Target
     surface.depthVS = -TransformWorldToView(input.positionWS).z;
     surface.metallic = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Metallic);
     surface.smoothness = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Smoothness);
-
-    float2 lightmapUV = GI_FRAGMENT_DATA(input);
-    GI gi = GetGI(lightmapUV);
+    
+    GI gi = GetGI(GI_FRAGMENT_DATA(input), surface);
     // 填充BRDF
     BRDF brdf = GetBRDF(surface);
     float3 color = GetLighting(surface, brdf, gi);

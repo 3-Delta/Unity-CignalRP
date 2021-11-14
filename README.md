@@ -6,7 +6,7 @@
 2. 尽可能使用同一个相机渲染 场景和UI
 3. hsr对于渲染物体顺序影响？是否可以在渲染不透明物体的时候，不在cpu端进行从近到远的排序？
 4. normalbias推近多少合适？
-5. 每个光源对应的layer设计？
+5. 每个光源对应的layer设计？顶点光?像素光? 只针对某些layer进行后处理?
 6. 为什么使用hdr时候，会对于gamma/linear有影响？也就是会导致画面变暗？
 
 学习资料:
@@ -33,3 +33,5 @@
 21. https://www.bilibili.com/video/BV1Ea4y1j7gu?spm_id_from=333.999.0.0
 22. https://www.bilibili.com/video/BV1ca4y1W7wN?spm_id_from=333.999.0.0
 23. https://learn.u3d.cn/tutorial/ilruntime
+24. https://zhuanlan.zhihu.com/p/265463655 lightmap
+25. https://zhuanlan.zhihu.com/p/37639418

@@ -21,6 +21,23 @@ CBUFFER_START(UnityPerDraw)
 	// 对于纹理的scaleoffset好像也是外部传递的, 因为一个纹理中,所有的scaleoffset都应该是一样的,而不是每个vertex不一样
 	float4 unity_LightmapST; 
 	float4 unity_DynamicLightmapST;
+
+	// lightprobo 
+	// r, g, b
+	// A, B, C 可能是因为三阶球协的原因,这里只有A/B/C三个
+	float4 unity_SHAr;
+	float4 unity_SHAg;
+	float4 unity_SHAb;
+	float4 unity_SHBr;
+	float4 unity_SHBg;
+	float4 unity_SHBb;
+	float4 unity_SHC;
+
+	// lppv相关
+	float4 unity_ProbeVolumeParams;
+	float4x4 unity_ProbeVolumeWorldToObject;
+	float4 unity_ProbeVolumeSizeInv;
+	float4 unity_ProbeVolumeMin;
 CBUFFER_END
 
 float4x4 unity_MatrixV;
