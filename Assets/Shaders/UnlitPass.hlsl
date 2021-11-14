@@ -1,8 +1,6 @@
 ﻿#ifndef CRP_UNLIT_PASS_INCLUDED
 #define CRP_UNLIT_PASS_INCLUDED
 
-#include "../ShaderLibrary/Common.hlsl"
-
 // UNITY_VERTEX_INPUT_INSTANCE_ID 其实就是： uint instanceID;
 // 因为gpuinstane就是针对每个渲染物体，而不是每个顶点，做的将mesh以及材质，transform等数据存储到gpu中
 // 所以渲染的时候，需要根据顶点拿到这个顶点需要的渲染数据。
@@ -28,15 +26,6 @@ CBUFFER_END
     定义一个数组
 #endif
 */
-
-TEXTURE2D(_BaseMap);
-SAMPLER(sampler_BaseMap);
-
-UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
-UNITY_DEFINE_INSTANCED_PROP(float4, _BaseMap_ST)
-UNITY_DEFINE_INSTANCED_PROP(float4, _BaseColor)
-UNITY_DEFINE_INSTANCED_PROP(float, _Cutoff)
-UNITY_INSTANCING_BUFFER_END(UnityPerMaterial)
 
 struct Attributes
 {
@@ -76,22 +65,19 @@ Varyings UnlitPassVertex(Attributes input)
 #if defined(_VERTEX_COLOR)
     output.color = input.color;
 #endif
-    float4 baseST = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseMap_ST);
-    output.baseUV = input.baseUV * baseST.xy + baseST.zw;
+    output.baseUV = TransformBaseUV(input.baseUV);
     return output;
 }
 
 float4 UnlitPassFragment(Varyings input) : SV_Target
 {
     UNITY_SETUP_INSTANCE_ID(input);
-    float4 baseMap = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.baseUV);
     // 类似于 arrayUnityPerMaterial[unity_InstanceID]._BaseColor
     // 根据一个vertex的static获取显存数据
-    float4 baseColor = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseColor);
-    float4 base = baseMap * baseColor;
+    float4 base = GetBase(input.baseUV);
 
     #if defined(_CLIPPING)
-    clip(base.a - UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff));
+    clip(base.a - GetCutoff(input.baseUV));
     #endif
 
     return base;

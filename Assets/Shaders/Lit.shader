@@ -26,6 +26,11 @@
 
     SubShader
     {
+    	HLSLINCLUDE
+    	#include "../ShaderLibrary/Common.hlsl"
+    	#include "../ShaderLibrary/Light/LitInput.hlsl"
+    	ENDHLSL
+    	
         Pass
         {
 			Tags {
@@ -83,6 +88,23 @@
             
             #include "../ShaderLibrary/Light/ShadowCaster.hlsl"
             ENDHLSL
+        }
+    	
+    	pass
+    	{
+    		Tags
+    		{
+    			"LightMode" = "Meta"
+            }
+    		
+    		Cull off
+    		
+    		HLSLPROGRAM
+    		#pragma target 3.5
+    		#pragma vertex MetaVertex
+    		#pragma fragment MetaFragment
+    		#include "MetaPass.hlsl"
+    		ENDHLSL
         }
     }
 }

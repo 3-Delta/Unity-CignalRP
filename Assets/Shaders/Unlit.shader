@@ -15,6 +15,11 @@
 
     SubShader
     {
+    	HLSLINCLUDE
+    	#include "../ShaderLibrary/Common.hlsl"
+    	#include "UnlitInput.hlsl"
+    	ENDHLSL
+    	
         Pass
         {
 			Blend [_SrcBlend] [_DstBlend]
@@ -31,6 +36,23 @@
             
             #include "UnlitPass.hlsl"
             ENDHLSL
+        }
+    	
+    	pass
+    	{
+    		Tags
+    		{
+    			"LightMode" = "Meta"
+            }
+    		
+    		Cull off
+    		
+    		HLSLPROGRAM
+    		#pragma target 3.5
+    		#pragma vertex MetaVertex
+    		#pragma fragment MetaFragment
+    		#include "MetaPass.hlsl"
+    		ENDHLSL
         }
     }
 }
