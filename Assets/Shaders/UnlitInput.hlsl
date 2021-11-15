@@ -28,6 +28,11 @@ float4 GetBase(float2 baseUV)
     return texelColor * color;
 }
 
+// 自发光选项
+float3 GetEmission(float2 baseUV) {
+    return GetBase(baseUV).rgb;
+}
+
 float GetCutoff(float2 baseUV)
 {
     return UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff);

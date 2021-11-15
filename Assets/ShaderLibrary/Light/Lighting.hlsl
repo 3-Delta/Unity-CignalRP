@@ -28,7 +28,8 @@ float3 GetLighting(FragSurface surface, BRDF brdf, Light light)
 float3 GetLighting(FragSurface surface, BRDF brdf, GI gi)
 {
     ShadowData shadowData = GetShadowData(surface);
-    float color = gi.diffuse;
+    float3 giColor =  gi.diffuse * brdf.diffuse;
+    float3 color = giColor;
     // 一个片元受到多个光照影响，就是color叠加
     for(int i = 0, dirLightCount = GetDirectionalLightCount(); i < dirLightCount; ++ i)
     {

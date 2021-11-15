@@ -75,6 +75,8 @@ float4 LitPassFragment(Varyings input) : SV_Target
     // 填充BRDF
     BRDF brdf = GetBRDF(surface);
     float3 color = GetLighting(surface, brdf, gi);
+    // 最后添加自发光
+    color += GetEmission(input.baseUV);
     return float4(color, surface.alpha);
 }
 
