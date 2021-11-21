@@ -28,7 +28,7 @@ float3 GetLighting(FragSurface surface, BRDF brdf, Light light)
 float3 GetLighting(FragSurface surface, BRDF brdf, GI gi)
 {
     ShadowData globalShadowData = GetShadowData(surface);
-    // gi的shadowmask
+    // shadowData的gi ShadowMask = gi的shadowmask 
     globalShadowData.shadowMask = gi.shadowMask;
     // gi的漫反射中影响漫反射
     float3 giColor =  gi.diffuse * brdf.diffuse;

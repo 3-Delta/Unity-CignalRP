@@ -41,12 +41,15 @@ struct DirectionalShadowData
     float shadowStrength;
     int tileIndexInShadowmap;
     float normalBias;
+
+    int shadowMaskChannel;
 };
 
 struct ShadowMask
 {
+    bool isAlways;
     bool isDistance;
-    float4 shadow;
+    float4 shadow; // rgba4个channel存储4个光源的shadow
 };
 
 struct ShadowData
@@ -77,6 +80,7 @@ ShadowData GetShadowData(FragSurface surface)
     // Assets\ShaderLibrary\Light\maxDistance和cullsphere.png
     ShadowData data;
     data.shadowMask.isDistance = false;
+    data.shadowMask.isAlways = false;
     data.shadowMask.shadow = 1.0;
 
     data.inAnyCascade = 1;
@@ -153,41 +157,49 @@ float GetRealTimeShadow(DirectionalShadowData dirShadowData, ShadowData globalSh
     return shadow;
 }
 
-float GetBakedShadow(ShadowMask shadowMask)
+float GetBakedShadow(ShadowMask shadowMask, int channel)
 {
     float shadow = 1.0;
-    if (shadowMask.isDistance)
+    if (shadowMask.isDistance || shadowMask.isAlways)
     {
-        shadow = shadowMask.shadow.r; // r是深度,还是一个是否在阴影中的bool值?
+        if(channel >= 0)
+        {
+            shadow = shadowMask.shadow[channel]; // r是深度,还是一个是否在阴影中的bool值?
+        }
     }
     return shadow;
 }
 
-float GetBakedShadow(ShadowMask shadowMask, float strength)
+float GetBakedShadow(ShadowMask shadowMask, int channel, float strength)
 {
     float shadow = 1.0;
-    if (shadowMask.isDistance)
+    if (shadowMask.isDistance || shadowMask.isAlways)
     {
-        shadow = lerp(1.0, GetBakedShadow(shadowMask), strength);
+        shadow = lerp(1.0, GetBakedShadow(shadowMask, channel), strength);
     }
     return shadow;
 }
 
-float MixBakedAndRealTimeShadow(ShadowData globalShadowData, float realTimeshadow, float shadowStrength)
+float MixBakedAndRealTimeShadow(ShadowData globalShadowData, float realTimeShadow, int channel, float shadowStrength)
 {
-    float shadow;
+    float bakedShadow = GetBakedShadow(globalShadowData.shadowMask, channel);
+    if (globalShadowData.shadowMask.isAlways)
+    {
+        realTimeShadow = lerp(1.0, realTimeShadow, globalShadowData.GetStrength());
+        // always下，只是检验一下min,没有和bake进行fade
+        // todo
+        float shadow = min(bakedShadow, realTimeShadow);
+        return lerp(1.0, shadow, shadowStrength);
+    }
+
     if (globalShadowData.shadowMask.isDistance)
     {
-        float bakedShadow = GetBakedShadow(globalShadowData.shadowMask);
         // lerp的过程中处理了超过maxDistance的时候的shadow的情乱
-        shadow = lerp(bakedShadow, realTimeshadow, globalShadowData.GetStrength());
-        shadow = lerp(1.0, shadow, shadowStrength);
+        realTimeShadow = lerp(bakedShadow, realTimeShadow, globalShadowData.GetStrength());
+        return lerp(1.0, realTimeShadow, shadowStrength);
     }
-    else
-    {
-        shadow = lerp(1.0, realTimeshadow, shadowStrength * globalShadowData.GetStrength());
-    }
-    return shadow;
+
+    return lerp(1.0, realTimeShadow, shadowStrength * globalShadowData.GetStrength());
 }
 
 // 采样到shadowmap之后,还需要考虑shadowstrength的影响,其实strength==0的时候,可以不生成shadowmap的,这样子节省
@@ -209,7 +221,7 @@ float GetDirectionalShadowAttenuation(DirectionalShadowData dirShadowData, Shado
     else
     {
         float realTimeShadow = GetRealTimeShadow(dirShadowData, globalShadowData, surface);
-        shadow = MixBakedAndRealTimeShadow(globalShadowData, realTimeShadow, dirShadowData.shadowStrength);
+        shadow = MixBakedAndRealTimeShadow(globalShadowData, realTimeShadow, dirShadowData.shadowMaskChannel, dirShadowData.shadowStrength);
     }
     return shadow;
 }

@@ -56,7 +56,7 @@
 			#pragma multi_compile _ LIGHTMAP_ON
 
             // shadowmask
-            #pragma multi_compile _ _SHADOW_MASK_DISTANCE
+            #pragma multi_compile _ _SHADOW_MASK_DISTANCE _SHADOW_MASK_ALWAYS
             
             // 支持gpu instance, 会有宏INSTANCE_ON定义
             #pragma multi_compile_instancing

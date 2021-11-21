@@ -9,6 +9,7 @@ namespace CignalRP {
         // 针对相机，不是光源，而且不是到相机位置的距离， 而是cameraview的depth，简单理解就是到camera的nearplane的距离
         [Min(0.01f)] public float maxShadowVSDistance = 100f;
         [FormerlySerializedAs("distanceFace")] [Range(0.001f, 1f)] public float distanceFade = 0.1f;
+        public bool useShadowMask = true;
 
         public enum EShadowMapSize {
             _256 = 256,

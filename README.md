@@ -11,6 +11,8 @@
 7. lightmap采样的时候,如何得知是哪张lightmap中进行采样? 是不是传递给shader的unity_Lightmap已经是确定的了[通过framedebugger确认]? 
     A: cpu提前计算得到具体的哪种lightmap, 然后传递给gpu
 8. lightmap是否压缩是不是lightsetting中设置的?可以通过调整这个设置看一下framedebugger的参数传递
+9. 为什么shadowmask下 min(bakedShadow, realTimeShadow);是这种实现方式?而且是lerp(1)开始?
+
 
 学习资料:
 1. https://edu.uwa4d.com/course-intro/0/282?purchased=true 

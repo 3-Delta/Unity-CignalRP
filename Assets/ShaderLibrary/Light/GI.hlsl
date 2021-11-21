@@ -82,7 +82,7 @@ float3 SampleLightProbe(FragSurface surface)
 #endif
 }
 
-float3 SampleBakedShadow(float2 lightmapUV, FragSurface surface)
+float4 SampleBakedShadow(float2 lightmapUV, FragSurface surface)
 {
 #if defined(LIGHTMAP_ON)
     // 静态物体
@@ -109,9 +109,13 @@ GI GetGI(float2 lightmapUV, FragSurface surface)
     gi.diffuse += SampleLightProbe(surface);
 
     gi.shadowMask.isDistance = false;
+    gi.shadowMask.isAlways = false;
     gi.shadowMask.shadow = 1.0;
-    
-#if defined(_SHADOW_MASK_DISTANCE)
+
+#if defined(_SHADOW_MASK_ALWAYS)
+    gi.shadowMask.isAlways = true;
+    gi.shadowMask.shadow = SampleBakedShadow(lightmapUV, surface);
+#elif defined(_SHADOW_MASK_DISTANCE)
     gi.shadowMask.isDistance = true;
     gi.shadowMask.shadow = SampleBakedShadow(lightmapUV, surface);
 #endif

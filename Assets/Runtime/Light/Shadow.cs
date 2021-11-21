@@ -57,7 +57,9 @@ namespace CignalRP {
         private static int shadowAtlasSizeId = Shader.PropertyToID("_ShadowAtlasSize");
 
         private bool useShadowMask = false;
+
         private static string[] shadowMaskKeywords = {
+            "_SHADOW_MASK_ALWAYS", // 会将静态物体的实时阴影替换成bakedshadow
             "_SHADOW_MASK_DISTANCE",
         };
 
@@ -81,15 +83,16 @@ namespace CignalRP {
                 // 在webgl2.0情况下，如果material不提供纹理的话，会失败
                 cmdBuffer.GetTemporaryRT(dirLightShadowAtlasId, 1, 1, 32, FilterMode.Bilinear, RenderTextureFormat.Shadowmap);
             }
-            
+
             cmdBuffer.BeginSample(ProfileName);
             int shadowMaskIndex = -1;
-            if (useShadowMask) {
+            if (useShadowMask && shadowSettings.useShadowMask) {
                 // shadowMaskIndex最终由光源和QualitySettings.shadowmaskMode一起决定
                 shadowMaskIndex = QualitySettings.shadowmaskMode == ShadowmaskMode.Shadowmask ? 0 : 1;
             }
+
             SetKeywords(shadowMaskKeywords, shadowMaskIndex);
-            
+
             cmdBuffer.EndSample(ProfileName);
             CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
         }
@@ -162,11 +165,11 @@ namespace CignalRP {
             // 包围球直径和shadowmap的tilesize的关系
             // 4.4.3 normalbias: ws中一个texel大小就足够了
             float texelSize = 2f * cullingSphere.w / tileSize;
-            
+
             // pcf滤波范围和normalbias适配
             float pcfFilterSize = texelSize * ((float)shadowSettings.directionalShadow.filterMode + 1f);
             cullingSphere.w -= pcfFilterSize;
-            
+
             cullingSphere.w *= cullingSphere.w;
             cascadeCullingSpheres[cascadeIndex] = cullingSphere;
 
@@ -232,8 +235,8 @@ namespace CignalRP {
             cmdBuffer.SetViewport(new Rect(offset.x * tileSize, offset.y * tileSize, tileSize, tileSize));
             return offset;
         }
-        
-        private void SetKeywords (string[] keywords, int enabledIndex) {
+
+        private void SetKeywords(string[] keywords, int enabledIndex) {
             for (int i = 0; i < keywords.Length; i++) {
                 if (i == enabledIndex) {
                     cmdBuffer.EnableShaderKeyword(keywords[i]);
@@ -252,15 +255,17 @@ namespace CignalRP {
         public Vector3 ReserveDirectionalShadows(Light light, int visibleLightIndex) {
             if (shadowedDirectionalLightCount < MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT &&
                 light.shadows != LightShadows.None && light.shadowStrength > 0f) {
-
+                
+                int shadowMaskChannel = -1;
                 LightBakingOutput lbo = light.bakingOutput;
                 if (lbo.lightmapBakeType == LightmapBakeType.Mixed && lbo.mixedLightingMode == MixedLightingMode.Shadowmask) {
                     useShadowMask = true;
+                    shadowMaskChannel = lbo.occlusionMaskChannel;
                 }
 
                 // 如果被裁剪,返回 -light.shadowStrength而不是, 正的-light.shadowStrength
                 if (!cullingResults.GetShadowCasterBounds(visibleLightIndex, out Bounds bounds)) {
-                    return new Vector3(-light.shadowStrength, 0f, 0f);
+                    return new Vector4(-light.shadowStrength, 0f, 0f, shadowMaskChannel);
                 }
 
                 // 光源设置为投射阴影，但是没有物件接收阴影，不需要shadowmap
@@ -272,10 +277,10 @@ namespace CignalRP {
                     nearPlaneOffset = light.shadowNearPlane
                 };
 
-                return new Vector3(light.shadowStrength, shadowSettings.directionalShadow.cascadeCount * shadowedDirectionalLightCount++, light.shadowNormalBias);
+                return new Vector4(light.shadowStrength, shadowSettings.directionalShadow.cascadeCount * shadowedDirectionalLightCount++, light.shadowNormalBias, shadowMaskChannel);
             }
 
-            return Vector3.zero;
+            return new Vector4(0f, 0f, 0f, -1f);
         }
     }
 }
