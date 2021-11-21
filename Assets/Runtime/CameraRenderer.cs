@@ -216,7 +216,13 @@ namespace CignalRP {
                 enableDynamicBatching = useDynamicBatching,
                 enableInstancing = useGPUInstancing,
                 // 传递obj在lightmap中的uv
-                perObjectData = PerObjectData.Lightmaps | PerObjectData.LightProbe | PerObjectData.LightProbeProxyVolume
+                perObjectData = PerObjectData.Lightmaps | 
+                                PerObjectData.LightProbe | 
+                                PerObjectData.LightProbeProxyVolume | // lppv
+                                
+                                PerObjectData.ShadowMask |
+                                PerObjectData.OcclusionProbe |
+                                PerObjectData.OcclusionProbeProxyVolume
             };
             // 渲染CRP光照的pass
             drawingSettings.SetShaderPassName(1, LitShaderTagId);

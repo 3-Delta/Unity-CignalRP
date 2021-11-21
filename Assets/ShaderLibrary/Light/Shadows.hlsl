@@ -43,12 +43,20 @@ struct DirectionalShadowData
     float normalBias;
 };
 
+struct ShadowMask
+{
+    bool isDistance;
+    float4 shadow;
+};
+
 struct ShadowData {
     int cascadeIndex;
     
     fixed inAnyCascade;
     // 是否超过了maxDistance
     fixed inMaxVSShadowDistance;
+
+    ShadowMask shadowMask;
 };
 
 float FadedShadowStrength(float depthVS, float maxVSDistance, float fade)
@@ -60,8 +68,12 @@ float FadedShadowStrength(float depthVS, float maxVSDistance, float fade)
 ShadowData GetShadowData(FragSurface surface) {
     // Assets\ShaderLibrary\Light\maxDistance和cullsphere.png
     ShadowData data;
+    data.shadowMask.isDistance = false;
+    data.shadowMask.shadow = 1.0;
+    
     data.inAnyCascade = 1;
     data.inMaxVSShadowDistance = FadedShadowStrength(surface.depthVS, _ShadowDistanceVSFade.x, _ShadowDistanceVSFade.y);
+    
     int i;
     for (i = 0; i < _CascadeCount; ++ i)
     {

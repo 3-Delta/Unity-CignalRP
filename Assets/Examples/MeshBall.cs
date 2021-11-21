@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.Rendering;
 
 public class MeshBall : MonoBehaviour {
     public readonly static int baseColorId = Shader.PropertyToID("_BaseColor");
@@ -7,6 +8,7 @@ public class MeshBall : MonoBehaviour {
 
     [SerializeField] Mesh mesh = default;
     [SerializeField] Material material = default;
+    [SerializeField] LightProbeProxyVolume lightProbeVolume = null;
 
     Matrix4x4[] matrices = new Matrix4x4[1023];
     Vector4[] baseColors = new Vector4[1023];
@@ -32,14 +34,33 @@ public class MeshBall : MonoBehaviour {
     private void Update() {
         if (block == null) {
             block = new MaterialPropertyBlock();
-            
+
             block.SetVectorArray(baseColorId, baseColors);
             block.SetFloatArray(metallicId, metallic);
             block.SetFloatArray(smoothnessId, smoothness);
+
+            if (!lightProbeVolume) {
+                var positions = new Vector3[1023];
+                for (int i = 0; i < matrices.Length; i++) {
+                    positions[i] = matrices[i].GetColumn(3);
+                }
+
+                var lightProbes = new SphericalHarmonicsL2[1023];
+                var occlusionProbes = new Vector4[1023];
+                LightProbes.CalculateInterpolatedLightAndOcclusionProbes(
+                    positions, lightProbes, occlusionProbes
+                );
+                block.CopySHCoefficientArraysFrom(lightProbes);
+                block.CopyProbeOcclusionArrayFrom(occlusionProbes);
+            }
         }
 
         // 需要用block,否则都是用最后一次的mat属性绘制
         // 每个dc最多渲染n个物体，超过则使用多个dc渲染, 这个n根据机器性能动态设置
-        Graphics.DrawMeshInstanced(mesh, 0, material, matrices, 1023, block);
+        Graphics.DrawMeshInstanced(mesh, 0, material, matrices, 1023, block,
+            ShadowCastingMode.On, true, 0, null,
+            lightProbeVolume ? LightProbeUsage.UseProxyVolume : LightProbeUsage.CustomProvided,
+            lightProbeVolume
+        );
     }
 }

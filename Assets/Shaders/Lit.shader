@@ -52,7 +52,11 @@
             #pragma shader_feature _RECEIVE_SHADOWS
 			#pragma multi_compile _ _DIRECTIONAL_PCF3 _DIRECTIONAL_PCF5 _DIRECTIONAL_PCF7
 
+            // lightmap
 			#pragma multi_compile _ LIGHTMAP_ON
+
+            // shadowmask
+            #pragma multi_compile _ _SHADOW_MASK_DISTANCE
             
             // 支持gpu instance, 会有宏INSTANCE_ON定义
             #pragma multi_compile_instancing
@@ -95,6 +99,7 @@
     	
     	pass
     	{
+    		// 编辑器 渲染lightmap
     		Tags
     		{
     			"LightMode" = "Meta"

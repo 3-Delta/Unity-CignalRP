@@ -11,6 +11,10 @@ SAMPLER(samplerunity_Lightmap);
 TEXTURE3D_FLOAT(unity_ProbeVolumeSH);
 SAMPLER(samplerunity_ProbeVolumeSH);
 
+// shadowmask
+TEXTURE2D(unity_ShadowMask);
+SAMPLER(samplerunity_ShadowMask);
+
 #if defined(LIGHTMAP_ON)
     #define GI_ATTRIBUTE_DATA float2 lightmapUV : TEXCOORD1;
     #define GI_VARYINGS_DATA float2 lightmapUV : VAR_LIGHT_MAP_UV;
@@ -26,6 +30,7 @@ SAMPLER(samplerunity_ProbeVolumeSH);
 struct GI
 {
     float3 diffuse; // 漫反射颜色, gi都是漫反射, 因为间接光照的光源位置不固定. 高光反射都是lightprobo提供
+    ShadowMask shadowMask;
 };
 
 // 静态物体采样lightmap
@@ -77,11 +82,40 @@ float3 SampleLightProbe(FragSurface surface)
 #endif
 }
 
+float3 SampleBakedShadow(float2 lightmapUV, FragSurface surface)
+{
+#if defined(LIGHTMAP_ON)
+    // 静态物体
+    return SAMPLE_TEXTURE2D(unity_ShadowMask, samplerunity_ShadowMask, lightmapUV);
+#else
+    if(unity_ProbeVolumeParams.x)
+    {
+        // 使用了lppv的shadowmask
+        return SampleProbeOcclusion(TEXTURE3D_ARGS(unity_ProbeVolumeSH, samplerunity_ProbeVolumeSH), surface.positionWS, 
+            unity_ProbeVolumeWorldToObject, unity_ProbeVolumeParams.y, unity_ProbeVolumeParams.z,
+            unity_ProbeVolumeMin.xyz, unity_ProbeVolumeSizeInv.xyz);
+    }
+    else
+    {
+        return unity_ProbesOcclusion;
+    }
+#endif
+}
+
 GI GetGI(float2 lightmapUV, FragSurface surface)
 {
     GI gi;
     gi.diffuse = SampleLightmap(lightmapUV);
     gi.diffuse += SampleLightProbe(surface);
+
+    gi.shadowMask.isDistance = false;
+    gi.shadowMask.shadow = 1.0;
+    
+#if defined(_SHADOW_MASK_DISTANCE)
+    gi.shadowMask.isDistance = true;
+    gi.shadowMask.shadow = SampleBakedShadow(lightmapUV, surface);
+#endif
+    
     return gi;
 }
 

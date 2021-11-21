@@ -1,5 +1,6 @@
 ﻿using System;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.Rendering;
 
 namespace CignalRP {
@@ -55,12 +56,18 @@ namespace CignalRP {
 
         private static int shadowAtlasSizeId = Shader.PropertyToID("_ShadowAtlasSize");
 
+        private bool useShadowMask = false;
+        private static string[] shadowMaskKeywords = {
+            "_SHADOW_MASK_DISTANCE",
+        };
+
         public void Setup(ref ScriptableRenderContext context, ref CullingResults cullingResults, ShadowSettings shadowSettings) {
             this.context = context;
             this.cullingResults = cullingResults;
             this.shadowSettings = shadowSettings;
 
             shadowedDirectionalLightCount = 0;
+            useShadowMask = false;
         }
 
         public void Render() {
@@ -74,6 +81,17 @@ namespace CignalRP {
                 // 在webgl2.0情况下，如果material不提供纹理的话，会失败
                 cmdBuffer.GetTemporaryRT(dirLightShadowAtlasId, 1, 1, 32, FilterMode.Bilinear, RenderTextureFormat.Shadowmap);
             }
+            
+            cmdBuffer.BeginSample(ProfileName);
+            int shadowMaskIndex = -1;
+            if (useShadowMask) {
+                // shadowMaskIndex最终由光源和QualitySettings.shadowmaskMode一起决定
+                shadowMaskIndex = QualitySettings.shadowmaskMode == ShadowmaskMode.Shadowmask ? 0 : 1;
+            }
+            SetKeywords(shadowMaskKeywords, shadowMaskIndex);
+            
+            cmdBuffer.EndSample(ProfileName);
+            CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
         }
 
         private void RenderDirectionalShadow() {
@@ -103,7 +121,7 @@ namespace CignalRP {
             float cascadeFade = 1f - shadowSettings.directionalShadow.cascadeFade;
             cmdBuffer.SetGlobalVector(shadowDistanceVSadeId, new Vector4(1f / shadowSettings.maxShadowVSDistance, 1f / shadowSettings.distanceFade, 1f / (1f - cascadeFade * cascadeFade)));
 
-            SetPCFKeywords();
+            SetKeywords(directionalFilterKeywords, (int)(shadowSettings.directionalShadow.filterMode) - 1);
             cmdBuffer.SetGlobalVector(shadowAtlasSizeId, new Vector4(atlasSize, 1f / atlasSize));
             cmdBuffer.EndSample(ProfileName);
             CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
@@ -214,15 +232,14 @@ namespace CignalRP {
             cmdBuffer.SetViewport(new Rect(offset.x * tileSize, offset.y * tileSize, tileSize, tileSize));
             return offset;
         }
-
-        private void SetPCFKeywords() {
-            int index = (int)(shadowSettings.directionalShadow.filterMode) - 1;
-            for (int i = 0; i < directionalFilterKeywords.Length; ++i) {
-                if (i == index) {
-                    cmdBuffer.EnableShaderKeyword(directionalFilterKeywords[i]);
+        
+        private void SetKeywords (string[] keywords, int enabledIndex) {
+            for (int i = 0; i < keywords.Length; i++) {
+                if (i == enabledIndex) {
+                    cmdBuffer.EnableShaderKeyword(keywords[i]);
                 }
                 else {
-                    cmdBuffer.DisableShaderKeyword(directionalFilterKeywords[i]);
+                    cmdBuffer.DisableShaderKeyword(keywords[i]);
                 }
             }
         }
@@ -236,6 +253,12 @@ namespace CignalRP {
             if (shadowedDirectionalLightCount < MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT &&
                 light.shadows != LightShadows.None && light.shadowStrength > 0f &&
                 cullingResults.GetShadowCasterBounds(visibleLightIndex, out Bounds bounds)) {
+
+                LightBakingOutput lbo = light.bakingOutput;
+                if (lbo.lightmapBakeType == LightmapBakeType.Mixed && lbo.mixedLightingMode == MixedLightingMode.Shadowmask) {
+                    useShadowMask = true;
+                }
+
                 // 光源设置为投射阴影，但是没有物件接收阴影，不需要shadowmap
                 shadowedDirectionalLights[shadowedDirectionalLightCount] = new ShadowedDirectionalLight() {
                     visibleLightIndex = visibleLightIndex,

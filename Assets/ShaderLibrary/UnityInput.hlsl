@@ -38,6 +38,9 @@ CBUFFER_START(UnityPerDraw)
 	float4x4 unity_ProbeVolumeWorldToObject;
 	float4 unity_ProbeVolumeSizeInv;
 	float4 unity_ProbeVolumeMin;
+
+	// shadowmask对应的动态物体的 probe
+	float4 unity_ProbesOcclusion;
 CBUFFER_END
 
 float4x4 unity_MatrixV;
