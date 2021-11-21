@@ -13,7 +13,7 @@
 #define UNITY_MATRIX_P glstate_matrix_projection
 
 #if defined(_SHADOW_MASK_DISTANCE)
-    #define SHADOWS_SHADOWMASK
+    #define SHADOWS_SHADOWMASK // 给UnityInstancing.hlsl定义
 #endif
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/UnityInstancing.hlsl"

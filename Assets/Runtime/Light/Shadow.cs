@@ -251,12 +251,16 @@ namespace CignalRP {
 
         public Vector3 ReserveDirectionalShadows(Light light, int visibleLightIndex) {
             if (shadowedDirectionalLightCount < MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT &&
-                light.shadows != LightShadows.None && light.shadowStrength > 0f &&
-                cullingResults.GetShadowCasterBounds(visibleLightIndex, out Bounds bounds)) {
+                light.shadows != LightShadows.None && light.shadowStrength > 0f) {
 
                 LightBakingOutput lbo = light.bakingOutput;
                 if (lbo.lightmapBakeType == LightmapBakeType.Mixed && lbo.mixedLightingMode == MixedLightingMode.Shadowmask) {
                     useShadowMask = true;
+                }
+
+                // 如果被裁剪,返回 -light.shadowStrength而不是, 正的-light.shadowStrength
+                if (!cullingResults.GetShadowCasterBounds(visibleLightIndex, out Bounds bounds)) {
+                    return new Vector3(-light.shadowStrength, 0f, 0f);
                 }
 
                 // 光源设置为投射阴影，但是没有物件接收阴影，不需要shadowmap

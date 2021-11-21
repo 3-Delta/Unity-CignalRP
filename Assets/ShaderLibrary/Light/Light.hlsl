@@ -40,12 +40,12 @@ int GetOtherLightCount()
     return _OtherLightCount;
 }
 
-DirectionalShadowData GetDirectionalShadowData(int lightIndex, ShadowData shadowData)
+DirectionalShadowData GetDirectionalShadowData(int lightIndex, ShadowData globalShadowData)
 {
     DirectionalShadowData data;
     float lightShadowStrength = _DirectionalLightShadowData[lightIndex].x;
-    data.shadowStrength = lightShadowStrength * shadowData.inAnyCascade * shadowData.inMaxVSShadowDistance;
-    data.tileIndexInShadowmap = _DirectionalLightShadowData[lightIndex].y + shadowData.cascadeIndex;
+    data.shadowStrength = lightShadowStrength; // * globalShadowData.inAnyCascade * globalShadowData.inMaxVSShadowDistance;
+    data.tileIndexInShadowmap = _DirectionalLightShadowData[lightIndex].y + globalShadowData.cascadeIndex;
     data.normalBias = _DirectionalLightShadowData[lightIndex].z;
     return data;
 }
@@ -62,7 +62,7 @@ Light GetDirectionalLight(int lightIndex, FragSurface surface, ShadowData shadow
     return light;
 }
 
-Light GetOtherLight(int lightIndex, FragSurface surface, ShadowData shadowData)
+Light GetOtherLight(int lightIndex, FragSurface surface, ShadowData globalShadowData)
 {
     Light light;
     light.color = _OtherLightColors[lightIndex];

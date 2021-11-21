@@ -25,15 +25,15 @@ TEXTURE2D_SHADOW(_DirectionalLightShadowAtlas);
 SAMPLER_CMP(SHADOW_SAMPLER);
 
 CBUFFER_START(_CRPShadows)
-    int _CascadeCount;
-    // 针对同一个相机,所有光源共用
-    float4 _CascadeCullingSpheres[MAX_CASCADE_COUNT];
-    float4 _CascadeData[MAX_CASCADE_COUNT];
+int _CascadeCount;
+// 针对同一个相机,所有光源共用
+float4 _CascadeCullingSpheres[MAX_CASCADE_COUNT];
+float4 _CascadeData[MAX_CASCADE_COUNT];
 
-    float4 _ShadowDistanceVSFade;
-    float4 _ShadowAtlasSize; // new Vector4(atlasSize, 1f / atlasSize)
+float4 _ShadowDistanceVSFade;
+float4 _ShadowAtlasSize; // new Vector4(atlasSize, 1f / atlasSize)
 
-    float4x4 _DirectionalShadowLightMatrices[MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADE_COUNT];
+float4x4 _DirectionalShadowLightMatrices[MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADE_COUNT];
 CBUFFER_END
 
 struct DirectionalShadowData
@@ -49,14 +49,21 @@ struct ShadowMask
     float4 shadow;
 };
 
-struct ShadowData {
+struct ShadowData
+{
     int cascadeIndex;
-    
+
+    // strength 其实是 == inAnyCascade * inMaxVSShadowDistance
     fixed inAnyCascade;
     // 是否超过了maxDistance
     fixed inMaxVSShadowDistance;
 
     ShadowMask shadowMask;
+
+    float GetStrength()
+    {
+        return inAnyCascade * inMaxVSShadowDistance;
+    }
 };
 
 float FadedShadowStrength(float depthVS, float maxVSDistance, float fade)
@@ -65,23 +72,24 @@ float FadedShadowStrength(float depthVS, float maxVSDistance, float fade)
     return saturate((1 - depthVS * maxVSDistance) * fade);
 }
 
-ShadowData GetShadowData(FragSurface surface) {
+ShadowData GetShadowData(FragSurface surface)
+{
     // Assets\ShaderLibrary\Light\maxDistance和cullsphere.png
     ShadowData data;
     data.shadowMask.isDistance = false;
     data.shadowMask.shadow = 1.0;
-    
+
     data.inAnyCascade = 1;
     data.inMaxVSShadowDistance = FadedShadowStrength(surface.depthVS, _ShadowDistanceVSFade.x, _ShadowDistanceVSFade.y);
-    
+
     int i;
     for (i = 0; i < _CascadeCount; ++ i)
     {
         float4 sphere = _CascadeCullingSpheres[i];
         float distanceSqr = DistanceSquare(surface.positionWS, sphere.xyz);
-        if(distanceSqr < sphere.w)
+        if (distanceSqr < sphere.w)
         {
-            if(i == _CascadeCount - 1)
+            if (i == _CascadeCount - 1)
             {
                 data.inMaxVSShadowDistance *= FadedShadowStrength(distanceSqr, _CascadeData[i].x, _ShadowDistanceVSFade.z);
             }
@@ -90,29 +98,29 @@ ShadowData GetShadowData(FragSurface surface) {
         }
     }
 
-    if(i == _CascadeCount)
+    if (i == _CascadeCount)
     {
         data.inAnyCascade = 0;
     }
-    
+
     data.cascadeIndex = i;
     return data;
 }
 
-fixed SampleDirectionalShadowAtlas(float3 positionSTS)
+float SampleDirectionalShadowAtlas(float3 positionSTS)
 {
     // https://blog.csdn.net/weixin_43675955/article/details/85226485
     // SAMPLE_TEXTURE2D_SHADOW 因为shadowmap没有mipmap,所以采样的就是0级，而且其实是使用xy坐标的shadowmap的depth和z比较大小
     // 返回值在[0, 1]之间，也就是要么被遮挡，要么不被遮挡,要么部分被遮挡
     // todo 能否返回类型修改为fixed
     // 片元在阴影中为0,否则为1
-    return (fixed)SAMPLE_TEXTURE2D_SHADOW(_DirectionalLightShadowAtlas, SHADOW_SAMPLER, positionSTS);
+    return SAMPLE_TEXTURE2D_SHADOW(_DirectionalLightShadowAtlas, SHADOW_SAMPLER, positionSTS);
 }
 
 // 利用pcf机制对于positionSTS周边的filterSize*filterSize的矩形进行遮挡情况的计算
 // 获取filtersize区域内，每个vertex的positionSTS对应的vertex是否被遮挡
 // 目的是为了阴影锯齿 或者 软阴影
-fixed FilterDirectionalShadow(float3 positionSTS)
+float FilterDirectionalShadow(float3 positionSTS)
 {
     #if defined(DIRECTIONAL_FILTER_SETUP) // 如果是pcf机制
         float weights[DIRECTIONAL_FILTER_SAMPLES];
@@ -127,35 +135,83 @@ fixed FilterDirectionalShadow(float3 positionSTS)
         }
         return shadow;
     #else // 非pcf机制
-        return SampleDirectionalShadowAtlas(positionSTS);
+    return SampleDirectionalShadowAtlas(positionSTS);
     #endif
 }
 
-// 采样到shadowmap之后,还需要考虑shadowstrength的影响,其实strength==0的时候,可以不生成shadowmap的,这样子节省
-// 这里配合返回值其实是配合IncomingLight的乘法计算的,所以在阴影中为0
-fixed GetDirectionalShadowAttenuation(DirectionalShadowData dirShadowData, ShadowData shadowData, FragSurface surface)
+float GetRealTimeShadow(DirectionalShadowData dirShadowData, ShadowData globalShadowData, FragSurface surface)
 {
-    #if !defined(_RECEIVE_SHADOWS)
-        return 1;
-    #endif
-    
-    // 因为strength==0的时候,其实不应该有shadowmap
-    // needSampleShadowmap为0,这里直接return,不会采样shadowmap
-    if(dirShadowData.shadowStrength <= 0)
-    {
-        return 1;
-    }
-
     // 每个级联应该使用的不是相同的pcfFilterSize
-    float pcfFilterSize = _CascadeData[shadowData.cascadeIndex].y;
+    float pcfFilterSize = _CascadeData[globalShadowData.cascadeIndex].y;
     float3 normalBias = surface.normalWS * (dirShadowData.normalBias * pcfFilterSize);
     float4x4 world2shadow = _DirectionalShadowLightMatrices[dirShadowData.tileIndexInShadowmap];
     // 增加normalbias之后，其实
     float4 ws = float4(surface.positionWS + normalBias, 1);
     // 将世界的z转换为光源阴影空间的z, 从而比对z
     float3 positionSTS = mul(world2shadow, ws).xyz;
-    fixed shadow = FilterDirectionalShadow(positionSTS);
-    return (fixed)lerp(1, shadow, dirShadowData.shadowStrength);
+    float shadow = FilterDirectionalShadow(positionSTS);
+    return shadow;
+}
+
+float GetBakedShadow(ShadowMask shadowMask)
+{
+    float shadow = 1.0;
+    if (shadowMask.isDistance)
+    {
+        shadow = shadowMask.shadow.r; // r是深度,还是一个是否在阴影中的bool值?
+    }
+    return shadow;
+}
+
+float GetBakedShadow(ShadowMask shadowMask, float strength)
+{
+    float shadow = 1.0;
+    if (shadowMask.isDistance)
+    {
+        shadow = lerp(1.0, GetBakedShadow(shadowMask), strength);
+    }
+    return shadow;
+}
+
+float MixBakedAndRealTimeShadow(ShadowData globalShadowData, float realTimeshadow, float shadowStrength)
+{
+    float shadow;
+    if (globalShadowData.shadowMask.isDistance)
+    {
+        float bakedShadow = GetBakedShadow(globalShadowData.shadowMask);
+        // lerp的过程中处理了超过maxDistance的时候的shadow的情乱
+        shadow = lerp(bakedShadow, realTimeshadow, globalShadowData.GetStrength());
+        shadow = lerp(1.0, shadow, shadowStrength);
+    }
+    else
+    {
+        shadow = lerp(1.0, realTimeshadow, shadowStrength * globalShadowData.GetStrength());
+    }
+    return shadow;
+}
+
+// 采样到shadowmap之后,还需要考虑shadowstrength的影响,其实strength==0的时候,可以不生成shadowmap的,这样子节省
+// 这里配合返回值其实是配合IncomingLight的乘法计算的,所以在阴影中为0
+float GetDirectionalShadowAttenuation(DirectionalShadowData dirShadowData, ShadowData globalShadowData, FragSurface surface)
+{
+    #if !defined(_RECEIVE_SHADOWS)
+        return 1.0;
+    #endif
+
+    float shadow;
+    // 因为strength==0的时候,其实不应该有shadowmap
+    // needSampleShadowmap为0,这里直接return,不会采样shadowmap
+    if (dirShadowData.shadowStrength * globalShadowData.GetStrength() <= 0)
+    {
+        // 被裁减的时候dirShadowData.shadowStrength是负数, 所以需要abs
+        shadow = GetBakedShadow(globalShadowData.shadowMask, abs(dirShadowData.shadowStrength));
+    }
+    else
+    {
+        float realTimeShadow = GetRealTimeShadow(dirShadowData, globalShadowData, surface);
+        shadow = MixBakedAndRealTimeShadow(globalShadowData, realTimeShadow, dirShadowData.shadowStrength);
+    }
+    return shadow;
 }
 
 #endif
