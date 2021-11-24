@@ -34,6 +34,8 @@ struct BRDF
     float roughness;
 
     float perceptualRoughness;
+    // 菲涅尔，考虑反射，也考虑折射
+    float fresnal;
 };
 
 // 计算漫反射率
@@ -68,6 +70,8 @@ BRDF GetBRDF(FragSurface surface)
     brdf.perceptualRoughness = PerceptualSmoothnessToPerceptualRoughness(surface.smoothness);
     brdf.roughness = PerceptualRoughnessToRoughness(brdf.perceptualRoughness);
 
+    brdf.fresnal = saturate(surface.smoothness + 1.0 - oneMinus);
+    
     return brdf;
 }
 
@@ -110,7 +114,12 @@ float3 DirectBRDF(FragSurface surface, BRDF brdf, Light light)
 
 float3 IndirectBRDF(FragSurface surface, BRDF brdf, float3 diffuse, float3 specular)
 {
-    return diffuse * brdf.diffuse;
+    float NDotV = dot(surface.normalWS, surface.viewDirectionWS);
+    float fresnalStrength = surface.fresnalStrength * Pow4(1.0 - saturate(NDotV));
+    float3 reflection = specular * lerp(brdf.specular, brdf.fresnal, fresnalStrength);
+    reflection /= brdf.roughness * brdf.roughness + 1.0;
+    
+    return diffuse * brdf.diffuse + reflection;
 }
 
 #endif

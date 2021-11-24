@@ -23,6 +23,7 @@ UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
 
     UNITY_DEFINE_INSTANCED_PROP(float, _Metallic)
     UNITY_DEFINE_INSTANCED_PROP(float, _Smoothness)
+    UNITY_DEFINE_INSTANCED_PROP(float, _Fresnal)
 UNITY_INSTANCING_BUFFER_END(UnityPerMaterial)
 
 float2 TransformBaseUV(float2 baseUV)
@@ -58,6 +59,11 @@ float GetMetallic(float2 baseUV)
 float GetSmoothness(float2 baseUV)
 {
     return UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Smoothness);
+}
+
+float GetFresnal(float2 baseUV)
+{
+    return UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Fresnal);
 }
 
 #endif

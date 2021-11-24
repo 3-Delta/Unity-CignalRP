@@ -14,6 +14,9 @@ struct FragSurface
 
     float metallic;
     float smoothness;
+
+    // 菲涅尔反射强度
+    float fresnalStrength;
 };
 
 #endif

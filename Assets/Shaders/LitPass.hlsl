@@ -70,6 +70,7 @@ float4 LitPassFragment(Varyings input) : SV_Target
     surface.depthVS = -TransformWorldToView(input.positionWS).z;
     surface.metallic = GetMetallic(input.baseUV);
     surface.smoothness = GetSmoothness(input.baseUV);
+    surface.fresnalStrength = GetFresnal(input.baseUV);
 
     // 填充BRDF
     BRDF brdf = GetBRDF(surface);
