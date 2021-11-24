@@ -2,6 +2,7 @@
 #define CRP_GI_INCLUDED
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/EntityLighting.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/ImageBasedLighting.hlsl"
 
 // lightmap
 TEXTURE2D(unity_Lightmap);
@@ -14,6 +15,10 @@ SAMPLER(samplerunity_ProbeVolumeSH);
 // shadowmask
 TEXTURE2D(unity_ShadowMask);
 SAMPLER(samplerunity_ShadowMask);
+
+// 间接光反射, 默认是天空盒
+TEXTURECUBE(unity_SpecCube0);
+SAMPLER(samplerunity_SpecCube0);
 
 #if defined(LIGHTMAP_ON)
     #define GI_ATTRIBUTE_DATA float2 lightmapUV : TEXCOORD1;
@@ -30,6 +35,7 @@ SAMPLER(samplerunity_ShadowMask);
 struct GI
 {
     float3 diffuse; // 漫反射颜色, gi都是漫反射, 因为间接光照的光源位置不固定. 高光反射都是lightprobo提供
+    float3 specular; // 镜面反射
     ShadowMask shadowMask;
 };
 
@@ -102,11 +108,21 @@ float4 SampleBakedShadow(float2 lightmapUV, FragSurface surface)
 #endif
 }
 
-GI GetGI(float2 lightmapUV, FragSurface surface)
+float4 SampleEnvironment(FragSurface surface, BRDF brdf)
+{
+    float3 reflection = reflect(-surface.viewDirectionWS, surface.normalWS);
+    float mipmap = PerceptualRoughnessToMipmapLevel(brdf.perceptualRoughness);
+    float4 environment = SAMPLE_TEXTURECUBE_LOD(unity_SpecCube0, samplerunity_SpecCube0, reflection, mipmap);
+    return  environment;
+}
+
+GI GetGI(float2 lightmapUV, FragSurface surface, BRDF brdf)
 {
     GI gi;
     gi.diffuse = SampleLightmap(lightmapUV);
     gi.diffuse += SampleLightProbe(surface);
+
+    gi.specular = SampleEnvironment(surface, brdf);
 
     gi.shadowMask.isDistance = false;
     gi.shadowMask.isAlways = false;

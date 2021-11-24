@@ -222,7 +222,9 @@ namespace CignalRP {
                                 
                                 PerObjectData.ShadowMask |
                                 PerObjectData.OcclusionProbe |
-                                PerObjectData.OcclusionProbeProxyVolume
+                                PerObjectData.OcclusionProbeProxyVolume |
+                                
+                                PerObjectData.ReflectionProbes
             };
             // 渲染CRP光照的pass
             drawingSettings.SetShaderPassName(1, LitShaderTagId);

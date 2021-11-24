@@ -83,5 +83,4 @@ Light GetOtherLight(int lightIndex, FragSurface surface, ShadowData globalShadow
     return light;
 }
 
-
 #endif

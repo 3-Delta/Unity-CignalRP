@@ -70,11 +70,15 @@ float4 LitPassFragment(Varyings input) : SV_Target
     surface.depthVS = -TransformWorldToView(input.positionWS).z;
     surface.metallic = GetMetallic(input.baseUV);
     surface.smoothness = GetSmoothness(input.baseUV);
-    
-    GI gi = GetGI(GI_FRAGMENT_DATA(input), surface);
+
     // 填充BRDF
     BRDF brdf = GetBRDF(surface);
+    
+    GI gi = GetGI(GI_FRAGMENT_DATA(input), surface, brdf);
+
+    // realtime光 + gi光
     float3 color = GetLighting(surface, brdf, gi);
+    
     // 最后添加自发光
     color += GetEmission(input.baseUV);
     return float4(color, surface.alpha);

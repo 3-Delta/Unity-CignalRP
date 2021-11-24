@@ -30,10 +30,15 @@ float3 GetLighting(FragSurface surface, BRDF brdf, GI gi)
     ShadowData globalShadowData = GetShadowData(surface);
     // shadowData的gi ShadowMask = gi的shadowmask 
     globalShadowData.shadowMask = gi.shadowMask;
-    // gi的漫反射中影响漫反射
-    float3 giColor =  gi.diffuse * brdf.diffuse;
-    float3 color = giColor;
+
+    float3 color = 0.0;
     
+    /* baked */
+    // gi的漫反射中影响漫反射
+    float3 giColor = IndirectBRDF(surface, brdf, gi.diffuse, gi.specular);
+    color += giColor;
+    
+    /* realtime */
     // 一个片元受到多个光照影响，就是color叠加
     for(int i = 0, dirLightCount = GetDirectionalLightCount(); i < dirLightCount; ++ i)
     {

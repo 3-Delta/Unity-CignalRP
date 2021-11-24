@@ -32,6 +32,8 @@ struct BRDF
     float3 specular;
     float3 diffuse;
     float roughness;
+
+    float perceptualRoughness;
 };
 
 // 计算漫反射率
@@ -47,7 +49,7 @@ float OneMinusReflectivity(float metallic)
     // 
     // 差值，漫反射0.96~0，高光反射0.04~1 如果不考虑吸收的话
     return lerp(1 - MIN_REFLECTIVITY, 0, metallic);
-    
+
     // 换算：(MIN_REFLECTIVITY - 1) * metallic + (1 - MIN_REFLECTIVITY)
     // = (1 - MIN_REFLECTIVITY) * (1 - metallic)
 }
@@ -58,19 +60,20 @@ BRDF GetBRDF(FragSurface surface)
     BRDF brdf;
     float oneMinus = OneMinusReflectivity(surface.metallic);
     brdf.diffuse = surface.color * oneMinus;
-    
+
     // todo 为什么不是如下？ 非金属不贡献镜面反射
     // brdf.specular = lerp(MIN_REFLECTIVITY, 1, surface.metallic) * surface.color;
     brdf.specular = lerp(MIN_REFLECTIVITY, surface.color, surface.metallic);
 
-    float perceptualRoughness = PerceptualSmoothnessToPerceptualRoughness(surface.smoothness);
-    brdf.roughness = PerceptualRoughnessToRoughness(perceptualRoughness);
-    
+    brdf.perceptualRoughness = PerceptualSmoothnessToPerceptualRoughness(surface.smoothness);
+    brdf.roughness = PerceptualRoughnessToRoughness(brdf.perceptualRoughness);
+
     return brdf;
 }
 
 // 高光强度，根据视角方向和反射方向的平行程度，有具体公式
-float SpecularStrength (FragSurface surface, BRDF brdf, Light light) {
+float SpecularStrength(FragSurface surface, BRDF brdf, Light light)
+{
     float3 h = SafeNormalize(light.fragToLightDirectionWS + surface.viewDirectionWS);
     float nh2 = Square(saturate(dot(surface.normalWS, h)));
     float lh2 = Square(saturate(dot(light.fragToLightDirectionWS, h)));
@@ -87,7 +90,8 @@ float SpecularStrength (FragSurface surface, BRDF brdf, Light light) {
 // Fd, Fs分别为漫反射,高光反射brdf函数，Kd, Ks分别是漫反射，高光反射的反射系数，因为能量守恒，Kd + Ks < 1, 因为有部分被吸收了
 // 其实pbr中，这里粗糙度其实影响的是 法线分布函数， 这里全部究极到了高光强度这个概念中
 // 这里使用的brdf是Minimalist CookTorrance BRDF的一种变体
-float3 DirectBRDF (FragSurface surface, BRDF brdf, Light light) {
+float3 DirectBRDF(FragSurface surface, BRDF brdf, Light light)
+{
     float specularStrength = SpecularStrength(surface, brdf, light);
     #if defined(_PREMULTIPLY_ALPHA)
         // 为了解决变化alpha的时候,高光也跟随变化的情况
@@ -100,8 +104,13 @@ float3 DirectBRDF (FragSurface surface, BRDF brdf, Light light) {
         // 一般情况下感觉alpha起作用，完全是以为blendmode是srcalpha, 会导致srcColor被完全消除，所以感觉alpha起了作用
         return specularStrength * brdf.specular + brdf.diffuse * surface.alpha;
     #else
-        return specularStrength * brdf.specular + brdf.diffuse;
+    return specularStrength * brdf.specular + brdf.diffuse;
     #endif
+}
+
+float3 IndirectBRDF(FragSurface surface, BRDF brdf, float3 diffuse, float3 specular)
+{
+    return diffuse * brdf.diffuse;
 }
 
 #endif
