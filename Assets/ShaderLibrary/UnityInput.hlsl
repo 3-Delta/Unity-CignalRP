@@ -41,6 +41,7 @@ CBUFFER_START(UnityPerDraw)
 
 	// shadowmask对应的动态物体的 probe
 	float4 unity_ProbesOcclusion;
+	float4 unity_SpecCube0_HDR;
 CBUFFER_END
 
 float4x4 unity_MatrixV;

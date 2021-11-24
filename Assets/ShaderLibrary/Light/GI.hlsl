@@ -108,12 +108,12 @@ float4 SampleBakedShadow(float2 lightmapUV, FragSurface surface)
 #endif
 }
 
-float4 SampleEnvironment(FragSurface surface, BRDF brdf)
+float3 SampleEnvironment(FragSurface surface, BRDF brdf)
 {
     float3 uvw = reflect(-surface.viewDirectionWS, surface.normalWS);
     float mipmap = PerceptualRoughnessToMipmapLevel(brdf.perceptualRoughness);
     float4 environment = SAMPLE_TEXTURECUBE_LOD(unity_SpecCube0, samplerunity_SpecCube0, uvw, mipmap);
-    return  environment;
+    return DecodeHDREnvironment(environment, unity_SpecCube0_HDR);
 }
 
 GI GetGI(float2 lightmapUV, FragSurface surface, BRDF brdf)
