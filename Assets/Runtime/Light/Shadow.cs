@@ -97,6 +97,7 @@ namespace CignalRP {
             CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
         }
 
+        // 只有平行光由shadowmap,其他光源没有shadowmap
         private void RenderDirectionalShadow() {
             int atlasSize = (int)shadowSettings.directionalShadow.shadowMapAtlasSize;
             cmdBuffer.GetTemporaryRT(dirLightShadowAtlasId, atlasSize, atlasSize, 32, FilterMode.Bilinear, RenderTextureFormat.Shadowmap);
@@ -278,6 +279,18 @@ namespace CignalRP {
                 };
 
                 return new Vector4(light.shadowStrength, shadowSettings.directionalShadow.cascadeCount * shadowedDirectionalLightCount++, light.shadowNormalBias, shadowMaskChannel);
+            }
+
+            return new Vector4(0f, 0f, 0f, -1f);
+        }
+
+        public Vector4 ReserveOtherShadow(Light light, int visibleLightIndex) {
+            if (light.shadows != LightShadows.None && light.shadowStrength > 0f) {
+                LightBakingOutput lbo = light.bakingOutput;
+                if (lbo.lightmapBakeType == LightmapBakeType.Mixed && lbo.mixedLightingMode == MixedLightingMode.Shadowmask) {
+                    useShadowMask = true;
+                    return new Vector4(light.shadowStrength, 0f, 0f, lbo.occlusionMaskChannel);
+                }
             }
 
             return new Vector4(0f, 0f, 0f, -1f);

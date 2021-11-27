@@ -30,7 +30,7 @@ namespace CignalRP {
         private static readonly ShaderTagId LitShaderTagId = new ShaderTagId("CRPLit");
 
         public void Render(ref ScriptableRenderContext context, Camera camera, bool useDynamicBatching, bool useGPUInstancing,
-            ShadowSettings shadowSettings, PostProcessSettings postProcessSettings, bool useHDR) {
+            ShadowSettings shadowSettings, PostProcessSettings postProcessSettings, bool useHDR, bool usePerObjectLights) {
             this.camera = camera;
             this.context = context;
             this.postProcessSettings = postProcessSettings;
@@ -76,7 +76,7 @@ namespace CignalRP {
             ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, cameraProfileName);
 
             #region 绘制Shadow
-            this.PreDraw(shadowSettings);
+            this.PreDraw(shadowSettings, usePerObjectLights);
             #endregion
 
             #region 绘制Camera常规内容
@@ -86,7 +86,7 @@ namespace CignalRP {
             Profiler.EndSample();
 #endif
             ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, ProfileName);
-            this.Draw(useDynamicBatching, useGPUInstancing);
+            this.Draw(useDynamicBatching, useGPUInstancing, usePerObjectLights);
             ProfileSample(ref context, cmdBuffer, EProfileStep.End, ProfileName);
             #endregion
 
@@ -122,9 +122,9 @@ namespace CignalRP {
         #endregion
 
         #region Pre/Post Draw
-        private void PreDraw(ShadowSettings shadowSettings) {
+        private void PreDraw(ShadowSettings shadowSettings, bool usePerObjectLights) {
             // 设置光源,阴影信息, 内含shadowmap的渲染， 所以需要在正式的相机参数等之前先渲染， 否则放在函数最尾巴，则渲染为一片黑色
-            this.lighting.Setup(ref this.context, ref this.cullingResults, shadowSettings);
+            this.lighting.Setup(ref this.context, ref this.cullingResults, shadowSettings, usePerObjectLights);
             this.postProcessStack.Setup(ref this.context, this.camera, this.postProcessSettings, allowHDR);
 
             // 设置vp矩阵给shader的unity_MatrixVP属性，在Framedebugger中选中某个dc可看
@@ -206,7 +206,13 @@ namespace CignalRP {
         }
 
         #region Draw
-        private void Draw(bool useDynamicBatching, bool useGPUInstancing) {
+        private void Draw(bool useDynamicBatching, bool useGPUInstancing, bool usePerObjectLights) {
+            PerObjectData lightPerObjectFlags = PerObjectData.None;
+            if (usePerObjectLights) {
+                // 每个对象收到几个哪几个光源的影响?
+                lightPerObjectFlags = PerObjectData.LightData | PerObjectData.LightIndices;
+            }
+
             // step1: 绘制不透明物体
             var sortingSettings = new SortingSettings() {
                 // todo 设置lightmode的pass以及物体排序规则， 是否可以利用GPU的hsr规避这里的排序？？？
@@ -224,7 +230,9 @@ namespace CignalRP {
                                 PerObjectData.OcclusionProbe |
                                 PerObjectData.OcclusionProbeProxyVolume |
                                 
-                                PerObjectData.ReflectionProbes
+                                PerObjectData.ReflectionProbes |
+                                
+                                lightPerObjectFlags
             };
             // 渲染CRP光照的pass
             drawingSettings.SetShaderPassName(1, LitShaderTagId);

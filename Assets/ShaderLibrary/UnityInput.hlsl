@@ -42,11 +42,15 @@ CBUFFER_START(UnityPerDraw)
 	// shadowmask对应的动态物体的 probe
 	float4 unity_ProbesOcclusion;
 	float4 unity_SpecCube0_HDR;
+
+	// 逐像素光源
+	real4 unity_LightData; // y:灯光数量
+	real4 unity_LightIndices[2]; // 共支持8个光源,每个是一个otherLightIndex
 CBUFFER_END
 
-float4x4 unity_MatrixV;
-float4x4 unity_MatrixVP;
-float4x4 glstate_matrix_projection;
+float4x4 unity_MatrixV;	// v
+float4x4 unity_MatrixVP;	// vp
+float4x4 glstate_matrix_projection; // p矩阵
 
 // urp中有传递
 float3 _WorldSpaceCameraPos;

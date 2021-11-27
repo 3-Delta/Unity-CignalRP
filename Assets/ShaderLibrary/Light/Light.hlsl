@@ -19,6 +19,8 @@ CBUFFER_START(_CRPLight)
     // 聚光灯方向 
     float4 _OtherLightWSDirections[MAX_OTHER_LIGHT_COUNT];
     float4 _OtherLightSpotAngles[MAX_OTHER_LIGHT_COUNT];
+
+    float4 _OtherLightShadowData[MAX_OTHER_LIGHT_COUNT];
 CBUFFER_END
 
 // 光源属性
@@ -28,6 +30,11 @@ struct Light
     float3 fragToLightDirectionWS;
     float shadowAttenuation;
     float lightAttenuation;
+
+    float GetAttenuation()
+    {
+        return shadowAttenuation * lightAttenuation;
+    }
 };
 
 int GetDirectionalLightCount()
@@ -51,6 +58,14 @@ DirectionalShadowData GetDirectionalShadowData(int lightIndex, ShadowData global
     return data;
 }
 
+OtherShadowData GetOtherShadowData(int lightIndex)
+{
+    OtherShadowData data;
+    data.shadowStrength = _OtherLightShadowData[lightIndex].x;
+    data.shadowMaskChannel = _OtherLightShadowData[lightIndex].w;
+    return data;
+}
+
 Light GetDirectionalLight(int lightIndex, FragSurface surface, ShadowData shadowData)
 {
     Light light;
@@ -69,7 +84,6 @@ Light GetOtherLight(int lightIndex, FragSurface surface, ShadowData globalShadow
     light.color = _OtherLightColors[lightIndex];
     float3 lightDirectionWS =  _OtherLightWSPositions[lightIndex].xyz - surface.positionWS;
     light.fragToLightDirectionWS = normalize(lightDirectionWS);
-    light.shadowAttenuation = 1;
 
     float distanceSqr = max(dot(lightDirectionWS, lightDirectionWS), 0.00001);
     // 因为球体范围，球体表面积是4Pi*R*R, 所以衰减是R*R的反比
@@ -78,8 +92,11 @@ Light GetOtherLight(int lightIndex, FragSurface surface, ShadowData globalShadow
     // 聚光灯多考虑 方向 和 角度 限制
     float4 apotAngle = _OtherLightSpotAngles[lightIndex];
     float spotAttenuation = Square(saturate(dot(_OtherLightWSDirections[lightIndex].xyz, light.fragToLightDirectionWS) * apotAngle.x + apotAngle.y));
-    
+
+    OtherShadowData otherShadowData = GetOtherShadowData(lightIndex);
+    light.shadowAttenuation = GetOtherShadowAttenuation(otherShadowData, globalShadowData, surface);
     light.lightAttenuation = rangeAttenuation * spotAttenuation / distanceSqr;
+    
     return light;
 }
 

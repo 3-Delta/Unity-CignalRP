@@ -45,6 +45,12 @@ struct DirectionalShadowData
     int shadowMaskChannel;
 };
 
+struct OtherShadowData
+{
+    float shadowStrength;
+    int shadowMaskChannel;
+};
+
 struct ShadowMask
 {
     bool isAlways;
@@ -162,7 +168,7 @@ float GetBakedShadow(ShadowMask shadowMask, int channel)
     float shadow = 1.0;
     if (shadowMask.isDistance || shadowMask.isAlways)
     {
-        if(channel >= 0)
+        if (channel >= 0)
         {
             shadow = shadowMask.shadow[channel]; // r是深度,还是一个是否在阴影中的bool值?
         }
@@ -223,6 +229,25 @@ float GetDirectionalShadowAttenuation(DirectionalShadowData dirShadowData, Shado
         float realTimeShadow = GetRealTimeShadow(dirShadowData, globalShadowData, surface);
         shadow = MixBakedAndRealTimeShadow(globalShadowData, realTimeShadow, dirShadowData.shadowMaskChannel, dirShadowData.shadowStrength);
     }
+    return shadow;
+}
+
+float GetOtherShadowAttenuation(OtherShadowData other, ShadowData globalShadowData, FragSurface surface)
+{
+    #if !defined(_RECEIVE_SHADOWS)
+    return 1.0;
+    #endif
+
+    float shadow;
+    if (other.shadowStrength > 0.0)
+    {
+        shadow = GetBakedShadow(globalShadowData.shadowMask, other.shadowMaskChannel, other.shadowStrength);
+    }
+    else
+    {
+        shadow = 1.0;
+    }
+
     return shadow;
 }
 

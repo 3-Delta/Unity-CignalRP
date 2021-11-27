@@ -9,12 +9,14 @@ namespace CignalRP {
         [SerializeField] private bool useGPUInstancing = true;
         [SerializeField] private bool useSRPBatcher = true;
 
+        [SerializeField] private bool usePerObjectLights = true;
+        
         [SerializeField] private ShadowSettings shadowSettings = default;
         [SerializeField] private PostProcessSettings postProcessSettings = default;
         [SerializeField] private bool allowHDR = false;
 
         protected override RenderPipeline CreatePipeline() {
-            return new CRP(useDynamicBatching, useGPUInstancing, useSRPBatcher, shadowSettings, postProcessSettings, allowHDR);
+            return new CRP(useDynamicBatching, useGPUInstancing, useSRPBatcher, shadowSettings, postProcessSettings, allowHDR, usePerObjectLights);
         }
     }
 }
