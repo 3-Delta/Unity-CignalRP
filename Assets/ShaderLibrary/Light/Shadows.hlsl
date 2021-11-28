@@ -81,6 +81,11 @@ float FadedShadowStrength(float depthVS, float maxVSDistance, float fade)
     return saturate((1 - depthVS * maxVSDistance) * fade);
 }
 
+float GetOtherShadow(OtherShadowData other, ShadowData globalShadowData, FragSurface surface)
+{
+    return 1.0;
+}
+
 ShadowData GetShadowData(FragSurface surface)
 {
     // Assets\ShaderLibrary\Light\maxDistance和cullsphere.png
@@ -108,7 +113,7 @@ ShadowData GetShadowData(FragSurface surface)
         }
     }
 
-    if (i == _CascadeCount)
+    if (i == _CascadeCount && _CascadeCount > 0)
     {
         data.inAnyCascade = 0;
     }
@@ -239,13 +244,14 @@ float GetOtherShadowAttenuation(OtherShadowData other, ShadowData globalShadowDa
     #endif
 
     float shadow;
-    if (other.shadowStrength > 0.0)
+    if (other.shadowStrength * globalShadowData.GetStrength() <= 0.0)
     {
         shadow = GetBakedShadow(globalShadowData.shadowMask, other.shadowMaskChannel, other.shadowStrength);
     }
     else
     {
-        shadow = 1.0;
+        shadow = GetOtherShadow(other, globalShadowData, surface);
+        shadow = MixBakedAndRealTimeShadow(globalShadowData, shadow, other.shadowMaskChannel, other.shadowStrength);
     }
 
     return shadow;

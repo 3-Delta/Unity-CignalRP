@@ -80,21 +80,21 @@ namespace CignalRP {
                 switch (curVisibleLight.lightType) {
                     case LightType.Directional: {
                         if (dirLightCount < MAX_DIR_LIGHT_COUNT) {
-                            SetupDirectionalLights(dirLightCount++, ref curVisibleLight);
+                            SetupDirectionalLights(dirLightCount++, i, ref curVisibleLight);
                         }
                     }
                         break;
                     case LightType.Point: {
                         if (otherLightCount < MAX_OTHER_LIGHT_COUNT) {
                             newIndex = otherLightCount;
-                            SetupPointLights(otherLightCount++, ref curVisibleLight);
+                            SetupPointLights(otherLightCount++, i, ref curVisibleLight);
                         }
                     }
                         break;
                     case LightType.Spot:
                         if (otherLightCount < MAX_OTHER_LIGHT_COUNT) {
                             newIndex = otherLightCount;
-                            SetupSpotLights(otherLightCount++, ref curVisibleLight);
+                            SetupSpotLights(otherLightCount++, i, ref curVisibleLight);
                         }
                         break;
                 }
@@ -111,12 +111,11 @@ namespace CignalRP {
                 }
                 cullingResults.SetLightIndexMap(indexMap);
                 Shader.EnableKeyword(lightsPerObjectKeyword);
+                indexMap.Dispose();
             }
             else {
                 Shader.DisableKeyword(lightsPerObjectKeyword);
             }
-            
-            indexMap.Dispose();
 
             cmdBuffer.SetGlobalInt(dirLightCountId, dirLightCount);
             if (dirLightCount > 0) {
@@ -136,7 +135,7 @@ namespace CignalRP {
         }
 
         // 点光，无位置，有方向
-        private void SetupDirectionalLights(int index, ref VisibleLight visibleLight) {
+        private void SetupDirectionalLights(int index, int visibleIndex, ref VisibleLight visibleLight) {
             // finalColor = light.color.linear * light.intensity;
             dirLightColors[index] = visibleLight.finalColor;
             // https://www.zhihu.com/people/kmac-3/answers
@@ -150,7 +149,7 @@ namespace CignalRP {
 
             // 保留Light阴影设置数据，得到可投射shadow的light数据
             // index是dirLightWSDirections的下标
-            dirLightShadowData[index] = shadow.ReserveDirectionalShadows(visibleLight.light, index);
+            dirLightShadowData[index] = shadow.ReserveDirectionalShadows(visibleLight.light, visibleIndex);
 
             // Light light = RenderSettings.sun;
             // cmdBuffer.SetGlobalVector(dirLightColorId, light.color.linear * light.intensity);
@@ -160,7 +159,7 @@ namespace CignalRP {
         }
 
         // 点光源，有位置，无方向
-        private void SetupPointLights(int index, ref VisibleLight visibleLight) {
+        private void SetupPointLights(int index, int visibleIndex, ref VisibleLight visibleLight) {
             otherLightColors[index] = visibleLight.finalColor;
             // 第4列是pos
             Vector4 pos = visibleLight.localToWorldMatrix.GetColumn(3);
@@ -172,11 +171,11 @@ namespace CignalRP {
             otherLightSpotAngles[index] = new Vector4(0f, 1f);
 
             Light light = visibleLight.light;
-            otherLightShadowData[index] = shadow.ReserveOtherShadow(light, index);
+            otherLightShadowData[index] = shadow.ReserveOtherShadow(light, visibleIndex);
         }
 
         // 聚光灯 有位置，有方向
-        private void SetupSpotLights(int index, ref VisibleLight visibleLight) {
+        private void SetupSpotLights(int index, int visibleIndex, ref VisibleLight visibleLight) {
             otherLightColors[index] = visibleLight.finalColor;
             otherLightDirections[index] = -visibleLight.localToWorldMatrix.GetColumn(2);
             
@@ -193,7 +192,7 @@ namespace CignalRP {
             float angleRangeInv = 1f / Mathf.Max(innerCos - outerCos, 0.001f);
             otherLightSpotAngles[index] = new Vector4(angleRangeInv, -outerCos * angleRangeInv);
 
-            otherLightShadowData[index] = shadow.ReserveOtherShadow(light, index);
+            otherLightShadowData[index] = shadow.ReserveOtherShadow(light, visibleIndex);
         }
     }
 }

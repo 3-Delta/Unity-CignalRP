@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxShadowVSDistance: 20
   distanceFade: 0.1
+  useShadowMask: 1
   directionalShadow:
     filterMode: 0
     shadowMapAtlasSize: 1024
@@ -22,6 +23,9 @@ MonoBehaviour:
     cascadeRatio2: 0.25
     cascadeRatio3: 0.5
     cascadeFade: 0.1
+  otherShadow:
+    filterMode: 0
+    shadowMapAtlasSize: 1024
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -37,8 +41,9 @@ MonoBehaviour:
   useDynamicBatching: 0
   useGPUInstancing: 1
   useSRPBatcher: 1
+  usePerObjectLights: 1
   shadowSettings: {fileID: -7423295556669773517}
-  postProcessSettings: {fileID: 0}
+  postProcessSettings: {fileID: 5314368177112552238}
   allowHDR: 0
 --- !u!114 &5314368177112552238
 MonoBehaviour:

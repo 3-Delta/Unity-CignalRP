@@ -46,6 +46,12 @@ namespace CignalRP {
             }
         }
         
+        [Serializable]
+        public struct OtherShadow {
+            public EFilterMode filterMode;
+            public EShadowMapSize shadowMapAtlasSize;
+        }
+        
         public DirectionalShadow directionalShadow = new DirectionalShadow() {
             filterMode = EFilterMode.PCF2x2,
             shadowMapAtlasSize = EShadowMapSize._1024,
@@ -55,6 +61,11 @@ namespace CignalRP {
             cascadeRatio2 = 0.25f,
             cascadeRatio3 = 0.5f,
             cascadeFade = 0.1f
+        };
+
+        public OtherShadow otherShadow = new OtherShadow() {
+            filterMode = EFilterMode.PCF2x2,
+            shadowMapAtlasSize = EShadowMapSize._1024,
         };
     }
 }
