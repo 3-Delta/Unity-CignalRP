@@ -63,7 +63,13 @@ float4 LitPassFragment(Varyings input) : SV_Target
     // 填充surface
     FragSurface surface;
     surface.positionWS = input.positionWS;
-    surface.normalWS = normalize(input.normalWS);
+#if defined(_NORMAL_MAP)
+    		surface.normal = NormalTangentToWorld(GetNormalTS(config), input.normalWS, input.tangentWS);
+    		surface.interpolatedNormal = input.normalWS;
+#else
+    		surface.normalWS = normalize(input.normalWS);
+    		surface.interpolatedNormal = surface.normalWS;
+#endif
     surface.color = base.rgb;
     surface.alpha = base.a;
     surface.viewDirectionWS = normalize(_WorldSpaceCameraPos - input.positionWS);
