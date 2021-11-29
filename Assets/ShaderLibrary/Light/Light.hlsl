@@ -62,7 +62,11 @@ OtherShadowData GetOtherShadowData(int lightIndex)
 {
     OtherShadowData data;
     data.shadowStrength = _OtherLightShadowData[lightIndex].x;
+    data.tileIndex = _OtherLightShadowData[lightIndex].y;
     data.shadowMaskChannel = _OtherLightShadowData[lightIndex].w;
+
+    data.lightPosWS = 0.0;
+    data.spotDirectionWS = 0.0;
     return data;
 }
 
@@ -81,7 +85,7 @@ Light GetDirectionalLight(int lightIndex, FragSurface surface, ShadowData shadow
 Light GetOtherLight(int lightIndex, FragSurface surface, ShadowData globalShadowData)
 {
     Light light;
-    light.color = _OtherLightColors[lightIndex];
+    light.color = _OtherLightColors[lightIndex].rgb;
     float3 lightDirectionWS =  _OtherLightWSPositions[lightIndex].xyz - surface.positionWS;
     light.fragToLightDirectionWS = normalize(lightDirectionWS);
 
@@ -90,12 +94,16 @@ Light GetOtherLight(int lightIndex, FragSurface surface, ShadowData globalShadow
     float rangeAttenuation = Square(saturate(1 - Square(distanceSqr * _OtherLightWSPositions[lightIndex].w)));
 
     // 聚光灯多考虑 方向 和 角度 限制
+    float3 spotDirection = _OtherLightWSDirections[lightIndex].xyz;
     float4 apotAngle = _OtherLightSpotAngles[lightIndex];
-    float spotAttenuation = Square(saturate(dot(_OtherLightWSDirections[lightIndex].xyz, light.fragToLightDirectionWS) * apotAngle.x + apotAngle.y));
+    float spotAttenuation = Square(saturate(dot(spotDirection, light.fragToLightDirectionWS) * apotAngle.x + apotAngle.y));
 
     OtherShadowData otherShadowData = GetOtherShadowData(lightIndex);
     light.shadowAttenuation = GetOtherShadowAttenuation(otherShadowData, globalShadowData, surface);
     light.lightAttenuation = rangeAttenuation * spotAttenuation / distanceSqr;
+
+    otherShadowData.lightPosWS = _OtherLightWSPositions[lightIndex].xyz;
+    otherShadowData.spotDirectionWS = spotDirection;
     
     return light;
 }

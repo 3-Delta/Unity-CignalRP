@@ -17,23 +17,43 @@
 #endif
 
 #define MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT 4
-#define MAX_CASCADE_COUNT 4
 
 // 其实就是:TEXTURE2D(textureName)
 TEXTURE2D_SHADOW(_DirectionalLightShadowAtlas);
+
+#if defined(_OTHER_PCF3)
+    #define OTHER_FILTER_SAMPLES 4
+    #define OTHER_FILTER_SETUP SampleShadow_ComputeSamples_Tent_3x3
+#elif defined(_OTHER_PCF5)
+    #define OTHER_FILTER_SAMPLES 9
+    #define OTHER_FILTER_SETUP SampleShadow_ComputeSamples_Tent_5x5
+#elif defined(_OTHER_PCF7)
+    #define OTHER_FILTER_SAMPLES 16
+    #define OTHER_FILTER_SETUP SampleShadow_ComputeSamples_Tent_7x7
+#endif
+
+#define MAX_SHADOW_OTHER_LIGHT_COUNT 16
+
+// 其实就是:TEXTURE2D(textureName)
+TEXTURE2D_SHADOW(_OtherLightShadowAtlas);
+
+#define MAX_CASCADE_COUNT 4
+
 #define SHADOW_SAMPLER sampler_linear_clamp_compare
 SAMPLER_CMP(SHADOW_SAMPLER);
 
 CBUFFER_START(_CRPShadows)
-int _CascadeCount;
-// 针对同一个相机,所有光源共用
-float4 _CascadeCullingSpheres[MAX_CASCADE_COUNT];
-float4 _CascadeData[MAX_CASCADE_COUNT];
+    int _CascadeCount;
+    // 针对同一个相机,所有光源共用
+    float4 _CascadeCullingSpheres[MAX_CASCADE_COUNT];
+    float4 _CascadeData[MAX_CASCADE_COUNT];
 
-float4 _ShadowDistanceVSFade;
-float4 _ShadowAtlasSize; // new Vector4(atlasSize, 1f / atlasSize)
+    float4 _ShadowDistanceVSFade;
+    float4 _ShadowAtlasSize; // new Vector4(atlasSize, 1f / atlasSize)
 
-float4x4 _DirectionalShadowLightMatrices[MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADE_COUNT];
+    float4x4 _DirectionalShadowLightMatrices[MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADE_COUNT];
+    float4x4 _OtherShadowLightMatrices[MAX_SHADOW_OTHER_LIGHT_COUNT];
+    float4 _OtherShadowTiles[MAX_SHADOW_OTHER_LIGHT_COUNT];
 CBUFFER_END
 
 struct DirectionalShadowData
@@ -48,7 +68,11 @@ struct DirectionalShadowData
 struct OtherShadowData
 {
     float shadowStrength;
+    int tileIndex;
     int shadowMaskChannel;
+
+    float3 lightPosWS;
+    float3 spotDirectionWS;
 };
 
 struct ShadowMask
@@ -79,11 +103,6 @@ float FadedShadowStrength(float depthVS, float maxVSDistance, float fade)
 {
     // 因为maxDistance处会直接突兀的截断shadow,所以需要在maxDistance之前的某个距离开始到maxDistance进行平滑过度
     return saturate((1 - depthVS * maxVSDistance) * fade);
-}
-
-float GetOtherShadow(OtherShadowData other, ShadowData globalShadowData, FragSurface surface)
-{
-    return 1.0;
 }
 
 ShadowData GetShadowData(FragSurface surface)
@@ -152,6 +171,40 @@ float FilterDirectionalShadow(float3 positionSTS)
     #else // 非pcf机制
     return SampleDirectionalShadowAtlas(positionSTS);
     #endif
+}
+
+float SampleOtherShadowAtlas(float3 positionSTS, float3 bounds)
+{
+    positionSTS.xy = clamp(positionSTS.xy, bounds.xy, bounds.xy + bounds.z);
+    return SAMPLE_TEXTURE2D_SHADOW(_OtherLightShadowAtlas, SHADOW_SAMPLER, positionSTS);
+}
+
+float FilterOtherShadow(float3 positionSTS, float3 bounds)
+{
+#if defined(OTHER_FILTER_SETUP) // 如果是pcf机制
+    float weights[OTHER_FILTER_SAMPLES];
+    float2 positions[OTHER_FILTER_SAMPLES];
+    float4 size = _ShadowAtlasSize.wwzz;
+    OTHER_FILTER_SETUP(size, positionSTS.xy, weights, positions);
+    fixed shadow = 0;
+    for (int i = 0; i < OTHER_FILTER_SAMPLES; i++) {
+        shadow += weights[i] * SampleOtherShadowAtlas(float3(positions[i].xy, positionSTS.z), bounds);
+    }
+    return shadow;
+#else // 非pcf机制
+    return SampleOtherShadowAtlas(positionSTS, bounds);
+#endif
+}
+
+float GetOtherShadow(OtherShadowData other, ShadowData globalShadowData, FragSurface surface)
+{
+    float4 tileData = _OtherShadowTiles[other.tileIndex];
+    float3 surfaceToLight = other.lightPosWS - surface.positionWS;
+    float distanceToLightPlane = dot(surfaceToLight, other.spotDirectionWS);
+    float3 normalBias = surface.interpolatedNormal * ( distanceToLightPlane * tileData.w);
+    float4 p = float4(surface.positionWS + normalBias, 1.0);
+    float4 positionSTS = mul(_OtherShadowLightMatrices[other.tileIndex], p);
+    return FilterOtherShadow(positionSTS.xyz / positionSTS.w, tileData.xyz);
 }
 
 float GetRealTimeShadow(DirectionalShadowData dirShadowData, ShadowData globalShadowData, FragSurface surface)

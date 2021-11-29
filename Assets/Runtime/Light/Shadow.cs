@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.Rendering;
@@ -79,10 +79,15 @@ namespace CignalRP {
             "_OTHER_PCF7",
         };
         
+        private static readonly int shadowPancakingId = Shader.PropertyToID("_ShadowPancaking");
+        
         private static readonly int otherLightShadowAtlasId = Shader.PropertyToID("_OtherLightShadowAtlas");
 
         private static readonly int otherShadowMatricesId = Shader.PropertyToID("_OtherShadowLightMatrices");
         private static readonly Matrix4x4[] otherShadowMatrices = new Matrix4x4[MAX_SHADOW_OTHER_LIGHT_COUNT];
+
+        private static readonly int otherShadowTilesId = Shader.PropertyToID("_OtherShadowTiles");
+        private static readonly Vector4[] otherShadowTiles = new Vector4[MAX_SHADOW_OTHER_LIGHT_COUNT];
         
         private ShadowedOtherLight[] shadowedOtherLights = new ShadowedOtherLight[MAX_SHADOW_OTHER_LIGHT_COUNT];
 
@@ -151,7 +156,7 @@ namespace CignalRP {
             cmdBuffer.SetRenderTarget(dirLightShadowAtlasId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             // 因为是shadowmap,所以只需要clearDepth
             cmdBuffer.ClearRenderTarget(true, false, Color.clear);
-
+            cmdBuffer.SetGlobalFloat(shadowPancakingId, 1f);
             cmdBuffer.BeginSample(ProfileName);
             CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
 
@@ -197,7 +202,7 @@ namespace CignalRP {
                 int tileIndex = startTileIndexOfThisLight + i;
                 Vector2 viewport = SetTileViewport(tileIndex, countPerLine, tileSize);
                 // 得到world->light的矩阵， 此时camera在light位置
-                dirShadowMatrices[tileIndex] = ConvertToAtlasMatrix(projMatrix, viewMatrix, viewport, countPerLine);
+                dirShadowMatrices[tileIndex] = ConvertToAtlasMatrix(projMatrix, viewMatrix, viewport, 1f / countPerLine);
                 cmdBuffer.SetViewProjectionMatrices(viewMatrix, projMatrix);
                 cmdBuffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
                 CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
@@ -216,6 +221,8 @@ namespace CignalRP {
             cmdBuffer.GetTemporaryRT(otherLightShadowAtlasId, atlasSize, atlasSize, 32, FilterMode.Bilinear, RenderTextureFormat.Shadowmap);
             cmdBuffer.SetRenderTarget(otherLightShadowAtlasId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             cmdBuffer.ClearRenderTarget(true, false, Color.clear);
+            // shadowpancaking只在平行光影响，因为平行光阴影是正交相机
+            cmdBuffer.SetGlobalFloat(shadowPancakingId, 0f);
 
             cmdBuffer.BeginSample(ProfileName);
             CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
@@ -228,6 +235,7 @@ namespace CignalRP {
             }
             
             cmdBuffer.SetGlobalMatrixArray(otherShadowMatricesId, otherShadowMatrices);
+            cmdBuffer.SetGlobalVectorArray(otherShadowTilesId, otherShadowTiles);
             SetKeywords(otherFilterKeywords, (int)(shadowSettings.otherShadow.filterMode) - 1);
             
             cmdBuffer.EndSample(ProfileName);
@@ -241,7 +249,15 @@ namespace CignalRP {
             cullingResults.ComputeSpotShadowMatricesAndCullingPrimitives(light.visibleLightIndex, out Matrix4x4 viewMatrix, out Matrix4x4 projMatrix, out ShadowSplitData splitData);
             shadowDrawSettings.splitData = splitData;
             
+            // todo 没懂
+            float textlSize = 2f / (tileSize * projMatrix.m00);
+            float filterSize = textlSize * ((float)shadowSettings.otherShadow.filterMode + 1f);
+            float bias = light.normalBias * filterSize * 1.4142136f;
+            
             Vector2 viewport = SetTileViewport(lightIndex, countPerLine, tileSize);
+            float tileScale = 1f / countPerLine;
+            SetOtherTileData(lightIndex, viewport, tileScale, bias);
+
             otherShadowMatrices[lightIndex] = ConvertToAtlasMatrix(projMatrix, viewMatrix, viewport, countPerLine);
             
             cmdBuffer.SetViewProjectionMatrices(viewMatrix, projMatrix);
@@ -271,12 +287,10 @@ namespace CignalRP {
 
         // vp矩阵将positionWS转换到ndc中， 这个矩阵将positionWS转换到size=1的CUBE区域中的某个tile块中
         // 也可以理解为转换到shadowspace
-        private Matrix4x4 ConvertToAtlasMatrix(Matrix4x4 projMatrix, Matrix4x4 viewMatrix, Vector2 offset, int countPerLine) {
+        private Matrix4x4 ConvertToAtlasMatrix(Matrix4x4 projMatrix, Matrix4x4 viewMatrix, Vector2 offset, float scale) {
             Matrix4x4 worldToShadow = GetShadowTransform(projMatrix, viewMatrix);
 
             Matrix4x4 sliceTransform = Matrix4x4.identity;
-            // 因为shadowmap都是矩形,不存在长方形
-            float scale = 1.0f / countPerLine;
             // 缩放, 将[0, 1]的立方体控制为[0, scale]的立方体
             sliceTransform.m00 = scale;
             sliceTransform.m11 = scale;
@@ -327,6 +341,16 @@ namespace CignalRP {
             // qustion??? 这个结果计算出来应该是旋转90的吧！！！
             cmdBuffer.SetViewport(new Rect(offset.x * tileSize, offset.y * tileSize, tileSize, tileSize));
             return offset;
+        }
+
+        private void SetOtherTileData(int index, Vector2 offset, float scale, float bias) {
+            float border = atlasSizes.w * 0.5f;
+            Vector4 data = Vector4.zero;
+            data.x = offset.x * scale + border;
+            data.x = offset.y * scale + border;
+            data.z = scale - border - border;
+            data.w = bias;
+            otherShadowTiles[index] = data;
         }
 
         private void SetKeywords(string[] keywords, int enabledIndex) {

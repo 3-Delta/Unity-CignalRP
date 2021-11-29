@@ -4,6 +4,7 @@
 struct FragSurface
 {
     float3 positionWS;
+    float3 interpolatedNormal;
     float3 normalWS;
     
     float3 color;
