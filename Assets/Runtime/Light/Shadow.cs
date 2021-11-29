@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.Rendering;
@@ -14,11 +15,12 @@ namespace CignalRP {
             // 光源近裁剪
             public float nearPlaneOffset;
         }
-        
+
         public struct ShadowedOtherLight {
             public int visibleLightIndex;
             public float slopeScaleBias;
             public float normalBias;
+            public bool isPointLight;
         }
 
         public const string ProfileName = "CRP|Shadow";
@@ -37,7 +39,7 @@ namespace CignalRP {
 
         private int shadowedDirectionalLightCount = 0;
         private ShadowedDirectionalLight[] shadowedDirectionalLights = new ShadowedDirectionalLight[MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT];
-        
+
         private static readonly int dirLightShadowAtlasId = Shader.PropertyToID("_DirectionalLightShadowAtlas");
 
         private static readonly int dirShadowMatricesId = Shader.PropertyToID("_DirectionalShadowLightMatrices");
@@ -59,9 +61,9 @@ namespace CignalRP {
             "_Directional_PCF5",
             "_Directional_PCF7",
         };
-        
+
         private static int shadowAtlasSizeId = Shader.PropertyToID("_ShadowAtlasSize");
-        private Vector4 atlasSizes; 
+        private Vector4 atlasSizes;
 
         private bool useShadowMask = false;
 
@@ -72,15 +74,15 @@ namespace CignalRP {
 
         public const int MAX_SHADOW_OTHER_LIGHT_COUNT = 16;
         private int shadowedOtherLightCount = 0;
-        
+
         private static string[] otherFilterKeywords = {
             "_OTHER_PCF3",
             "_OTHER_PCF5",
             "_OTHER_PCF7",
         };
-        
+
         private static readonly int shadowPancakingId = Shader.PropertyToID("_ShadowPancaking");
-        
+
         private static readonly int otherLightShadowAtlasId = Shader.PropertyToID("_OtherLightShadowAtlas");
 
         private static readonly int otherShadowMatricesId = Shader.PropertyToID("_OtherShadowLightMatrices");
@@ -88,7 +90,7 @@ namespace CignalRP {
 
         private static readonly int otherShadowTilesId = Shader.PropertyToID("_OtherShadowTiles");
         private static readonly Vector4[] otherShadowTiles = new Vector4[MAX_SHADOW_OTHER_LIGHT_COUNT];
-        
+
         private ShadowedOtherLight[] shadowedOtherLights = new ShadowedOtherLight[MAX_SHADOW_OTHER_LIGHT_COUNT];
 
         public void Setup(ref ScriptableRenderContext context, ref CullingResults cullingResults, ShadowSettings shadowSettings) {
@@ -100,7 +102,7 @@ namespace CignalRP {
             shadowedOtherLightCount = 0;
             useShadowMask = false;
         }
-        
+
         public void Clean() {
             cmdBuffer.ReleaseTemporaryRT(dirLightShadowAtlasId);
             if (shadowedOtherLightCount > 0) {
@@ -144,14 +146,14 @@ namespace CignalRP {
             cmdBuffer.SetGlobalVector(shadowDistanceVSadeId, new Vector4(1f / shadowSettings.maxShadowVSDistance, 1f / shadowSettings.distanceFade, 1f / (1f - cascadeFade * cascadeFade)));
 
             cmdBuffer.SetGlobalVector(shadowAtlasSizeId, atlasSizes);
-            
+
             cmdBuffer.EndSample(ProfileName);
             CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
         }
 
         // 只有平行光由shadowmap,其他光源没有shadowmap
         private void RenderDirectionalShadow() {
-            int atlasSize = (int)shadowSettings.directionalShadow.shadowMapAtlasSize;
+            int atlasSize = (int) shadowSettings.directionalShadow.shadowMapAtlasSize;
             cmdBuffer.GetTemporaryRT(dirLightShadowAtlasId, atlasSize, atlasSize, 32, FilterMode.Bilinear, RenderTextureFormat.Shadowmap);
             cmdBuffer.SetRenderTarget(dirLightShadowAtlasId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             // 因为是shadowmap,所以只需要clearDepth
@@ -173,8 +175,8 @@ namespace CignalRP {
             cmdBuffer.SetGlobalVectorArray(cascadeDataId, cascadeData);
             cmdBuffer.SetGlobalMatrixArray(dirShadowMatricesId, dirShadowMatrices);
 
-            SetKeywords(directionalFilterKeywords, (int)(shadowSettings.directionalShadow.filterMode) - 1);
-            
+            SetKeywords(directionalFilterKeywords, (int) (shadowSettings.directionalShadow.filterMode) - 1);
+
             atlasSizes.x = atlasSize;
             atlasSizes.y = 1f / atlasSize;
 
@@ -188,6 +190,7 @@ namespace CignalRP {
             int cascadeCount = shadowSettings.directionalShadow.cascadeCount;
             int startTileIndexOfThisLight = lightIndex * cascadeCount;
             Vector3 ratios = shadowSettings.directionalShadow.cascadeRatios;
+            float tileScale = 1f / countPerLine;
 
             for (int i = 0; i < cascadeCount; ++i) {
                 cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(light.visibleLightIndex, i, cascadeCount, ratios,
@@ -202,7 +205,7 @@ namespace CignalRP {
                 int tileIndex = startTileIndexOfThisLight + i;
                 Vector2 viewport = SetTileViewport(tileIndex, countPerLine, tileSize);
                 // 得到world->light的矩阵， 此时camera在light位置
-                dirShadowMatrices[tileIndex] = ConvertToAtlasMatrix(projMatrix, viewMatrix, viewport, 1f / countPerLine);
+                dirShadowMatrices[tileIndex] = ConvertToAtlasMatrix(projMatrix, viewMatrix, viewport, tileScale);
                 cmdBuffer.SetViewProjectionMatrices(viewMatrix, projMatrix);
                 cmdBuffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
                 CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
@@ -214,10 +217,10 @@ namespace CignalRP {
         }
 
         private void RenderOtherShadow() {
-            int atlasSize = (int)shadowSettings.otherShadow.shadowMapAtlasSize;
+            int atlasSize = (int) shadowSettings.otherShadow.shadowMapAtlasSize;
             atlasSizes.z = atlasSize;
             atlasSizes.w = 1f / atlasSize;
-            
+
             cmdBuffer.GetTemporaryRT(otherLightShadowAtlasId, atlasSize, atlasSize, 32, FilterMode.Bilinear, RenderTextureFormat.Shadowmap);
             cmdBuffer.SetRenderTarget(otherLightShadowAtlasId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             cmdBuffer.ClearRenderTarget(true, false, Color.clear);
@@ -230,44 +233,86 @@ namespace CignalRP {
             int tileCount = shadowedOtherLightCount;
             int countPerLine = tileCount <= 1 ? 1 : tileCount <= 4 ? 2 : 4;
             int tileSize = atlasSize / countPerLine;
-            for (int i = 0; i < shadowedOtherLightCount; ++i) {
-                RenderSoptShadow(i, countPerLine, tileSize);
+            for (int i = 0; i < shadowedOtherLightCount;) {
+                if (!shadowedOtherLights[i].isPointLight) {
+                    RenderSpotShadow(i, countPerLine, tileSize);
+                    i += 1;
+                }
+                else {
+                    RenderPointShadow(i, countPerLine, tileSize);
+                    i += 6;
+                }
             }
-            
+
+
             cmdBuffer.SetGlobalMatrixArray(otherShadowMatricesId, otherShadowMatrices);
             cmdBuffer.SetGlobalVectorArray(otherShadowTilesId, otherShadowTiles);
-            SetKeywords(otherFilterKeywords, (int)(shadowSettings.otherShadow.filterMode) - 1);
-            
+            SetKeywords(otherFilterKeywords, (int) (shadowSettings.otherShadow.filterMode) - 1);
+
             cmdBuffer.EndSample(ProfileName);
             CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
         }
 
-        private void RenderSoptShadow(int lightIndex, int countPerLine, int tileSize) {
+        private void RenderSpotShadow(int lightIndex, int countPerLine, int tileSize) {
             var light = shadowedOtherLights[lightIndex];
             var shadowDrawSettings = new ShadowDrawingSettings(cullingResults, light.visibleLightIndex);
 
             cullingResults.ComputeSpotShadowMatricesAndCullingPrimitives(light.visibleLightIndex, out Matrix4x4 viewMatrix, out Matrix4x4 projMatrix, out ShadowSplitData splitData);
             shadowDrawSettings.splitData = splitData;
-            
+
             // todo 没懂
             float textlSize = 2f / (tileSize * projMatrix.m00);
-            float filterSize = textlSize * ((float)shadowSettings.otherShadow.filterMode + 1f);
+            float filterSize = textlSize * ((float) shadowSettings.otherShadow.filterMode + 1f);
             float bias = light.normalBias * filterSize * 1.4142136f;
-            
+
             Vector2 viewport = SetTileViewport(lightIndex, countPerLine, tileSize);
             float tileScale = 1f / countPerLine;
             SetOtherTileData(lightIndex, viewport, tileScale, bias);
 
-            otherShadowMatrices[lightIndex] = ConvertToAtlasMatrix(projMatrix, viewMatrix, viewport, countPerLine);
-            
+            otherShadowMatrices[lightIndex] = ConvertToAtlasMatrix(projMatrix, viewMatrix, viewport, tileScale);
+
             cmdBuffer.SetViewProjectionMatrices(viewMatrix, projMatrix);
             // 斜度比率
             cmdBuffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
             CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
-            
+
             context.DrawShadows(ref shadowDrawSettings);
             // 还原
             cmdBuffer.SetGlobalDepthBias(0f, 0f);
+        }
+
+        private void RenderPointShadow(int lightIndex, int countPerLine, int tileSize) {
+            var light = shadowedOtherLights[lightIndex];
+            var shadowDrawSettings = new ShadowDrawingSettings(cullingResults, light.visibleLightIndex);
+
+            float texelSize = 2f / tileSize;
+            float filterSize = texelSize * ((float) shadowSettings.otherShadow.filterMode + 1f);
+            float bias = light.normalBias * filterSize * 1.4142136f;
+            float tileScale = 1f / countPerLine;
+
+            float fovBias = Mathf.Atan(1f + bias + filterSize) * Mathf.Rad2Deg * 2f - 90f;
+            for (int i = 0; i < 6; ++i) {
+                cullingResults.ComputePointShadowMatricesAndCullingPrimitives(light.visibleLightIndex, (CubemapFace) i, fovBias, out Matrix4x4 viewMatrix, out Matrix4x4 projMatrix, out ShadowSplitData splitData);
+                shadowDrawSettings.splitData = splitData;
+                // 因为渲染point的阴影的时候，Unity将三角形颠倒了，我们可以通过设置相机的view矩阵的y==-y, 实现相机的翻转
+                viewMatrix.m11 = -viewMatrix.m11;
+                viewMatrix.m12 = -viewMatrix.m12;
+                viewMatrix.m13 = -viewMatrix.m13;
+
+                int tileIndex = lightIndex + i;
+                Vector2 viewport = SetTileViewport(tileIndex, countPerLine, tileSize);
+                SetOtherTileData(tileIndex, viewport, tileScale, bias);
+                otherShadowMatrices[tileIndex] = ConvertToAtlasMatrix(projMatrix, viewMatrix, viewport, tileScale);
+
+                cmdBuffer.SetViewProjectionMatrices(viewMatrix, projMatrix);
+                cmdBuffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
+
+                CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
+
+                context.DrawShadows(ref shadowDrawSettings);
+                // 还原
+                cmdBuffer.SetGlobalDepthBias(0f, 0f);
+            }
         }
 
         private void SetCascadeData(int cascadeIndex, Vector4 cullingSphere, float tileSize) {
@@ -276,7 +321,7 @@ namespace CignalRP {
             float texelSize = 2f * cullingSphere.w / tileSize;
 
             // pcf滤波范围和normalbias适配
-            float pcfFilterSize = texelSize * ((float)shadowSettings.directionalShadow.filterMode + 1f);
+            float pcfFilterSize = texelSize * ((float) shadowSettings.directionalShadow.filterMode + 1f);
             cullingSphere.w -= pcfFilterSize;
 
             cullingSphere.w *= cullingSphere.w;
@@ -363,7 +408,7 @@ namespace CignalRP {
                 }
             }
         }
-        
+
         public Vector3 ReserveDirectionalShadows(Light light, int visibleLightIndex) {
             if (shadowedDirectionalLightCount < MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT &&
                 light.shadows != LightShadows.None && light.shadowStrength > 0f) {
@@ -407,17 +452,25 @@ namespace CignalRP {
                 maskChannel = lbo.occlusionMaskChannel;
             }
 
-            if (shadowedOtherLightCount >= MAX_SHADOW_OTHER_LIGHT_COUNT || !cullingResults.GetShadowCasterBounds(visibleLightIndex, out var bounds)) {
+            bool isPointLight = light.type == LightType.Point;
+            // 点光源辐射四面八方，所以使用cube的6个面进行渲染，简单将点光源视为6个灯光，会占用6个tile块，所以16个里面最多只能有两个
+            // 点光源阴影的tile
+            int newLightCount = shadowedOtherLightCount + (isPointLight ? 6 : 1);
+            // 非平行光超过了max
+            if (newLightCount >= MAX_SHADOW_OTHER_LIGHT_COUNT || !cullingResults.GetShadowCasterBounds(visibleLightIndex, out var bounds)) {
                 return new Vector4(-shadowStrength, 0, 0f, maskChannel);
             }
-            
+
             shadowedOtherLights[shadowedOtherLightCount] = new ShadowedOtherLight {
                 visibleLightIndex = visibleLightIndex,
                 slopeScaleBias = light.shadowBias,
                 normalBias = light.shadowNormalBias,
+                isPointLight = isPointLight,
             };
 
-            return new Vector4(shadowStrength, shadowedOtherLightCount++, 0f, maskChannel);
+            Vector4 data = new Vector4(light.shadowStrength, shadowedOtherLightCount, isPointLight ? 1f : 0f, maskChannel);
+            shadowedOtherLightCount = newLightCount;
+            return data;
         }
     }
 }

@@ -66,7 +66,9 @@ OtherShadowData GetOtherShadowData(int lightIndex)
     data.shadowMaskChannel = _OtherLightShadowData[lightIndex].w;
 
     data.lightPosWS = 0.0;
+    data.isPointLight = _OtherLightShadowData[lightIndex].z == 1.0;
     data.spotDirectionWS = 0.0;
+    data.lightDirectionWS = 0.0;
     return data;
 }
 
@@ -99,11 +101,12 @@ Light GetOtherLight(int lightIndex, FragSurface surface, ShadowData globalShadow
     float spotAttenuation = Square(saturate(dot(spotDirection, light.fragToLightDirectionWS) * apotAngle.x + apotAngle.y));
 
     OtherShadowData otherShadowData = GetOtherShadowData(lightIndex);
+    otherShadowData.lightPosWS = _OtherLightWSPositions[lightIndex].xyz;
+    otherShadowData.lightDirectionWS = light.fragToLightDirectionWS;
+    otherShadowData.spotDirectionWS = spotDirection;
+
     light.shadowAttenuation = GetOtherShadowAttenuation(otherShadowData, globalShadowData, surface);
     light.lightAttenuation = rangeAttenuation * spotAttenuation / distanceSqr;
-
-    otherShadowData.lightPosWS = _OtherLightWSPositions[lightIndex].xyz;
-    otherShadowData.spotDirectionWS = spotDirection;
     
     return light;
 }

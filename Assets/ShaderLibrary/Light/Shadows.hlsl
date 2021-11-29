@@ -71,8 +71,12 @@ struct OtherShadowData
     int tileIndex;
     int shadowMaskChannel;
 
+    bool isPointLight;
+    
     float3 lightPosWS;
     float3 spotDirectionWS;
+
+    float3 lightDirectionWS;
 };
 
 struct ShadowMask
@@ -97,6 +101,15 @@ struct ShadowData
     {
         return inAnyCascade * inMaxVSShadowDistance;
     }
+};
+
+static const float3 pointShadowPlanes[6] = {
+    float3(-1.0, 0.0, 0.0),
+    float3(1.0, 0.0, 0.0),
+    float3(0.0, -1.0, 0.0),
+    float3(0.0, 1.0, 0.0),
+    float3(0.0, 0.0, -1.0),
+    float3(0.0, 0.0, 1.0),
 };
 
 float FadedShadowStrength(float depthVS, float maxVSDistance, float fade)
@@ -198,12 +211,21 @@ float FilterOtherShadow(float3 positionSTS, float3 bounds)
 
 float GetOtherShadow(OtherShadowData other, ShadowData globalShadowData, FragSurface surface)
 {
-    float4 tileData = _OtherShadowTiles[other.tileIndex];
+    float tileIndex = other.tileIndex;
+    float3 lightPlane = other.spotDirectionWS;
+    if(other.isPointLight)
+    {
+        float faceOffset = CubeMapFaceID(-other.lightDirectionWS);
+        tileIndex += faceOffset;
+        lightPlane += pointShadowPlanes[faceOffset];
+    }
+    
+    float4 tileData = _OtherShadowTiles[tileIndex];
     float3 surfaceToLight = other.lightPosWS - surface.positionWS;
-    float distanceToLightPlane = dot(surfaceToLight, other.spotDirectionWS);
+    float distanceToLightPlane = dot(surfaceToLight, lightPlane);
     float3 normalBias = surface.interpolatedNormal * ( distanceToLightPlane * tileData.w);
     float4 p = float4(surface.positionWS + normalBias, 1.0);
-    float4 positionSTS = mul(_OtherShadowLightMatrices[other.tileIndex], p);
+    float4 positionSTS = mul(_OtherShadowLightMatrices[tileIndex], p);
     return FilterOtherShadow(positionSTS.xyz / positionSTS.w, tileData.xyz);
 }
 
