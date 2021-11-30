@@ -19,8 +19,8 @@ namespace CignalRP {
         public static readonly int dirLightColorsId = Shader.PropertyToID("_DirectionalLightColors");
         public static readonly Vector4[] dirLightColors = new Vector4[MAX_DIR_LIGHT_COUNT];
         
-        public static readonly int dirLightDirectionsId = Shader.PropertyToID("_DirectionalLightWSDirections");
-        public static readonly Vector4[] dirLightWSDirections = new Vector4[MAX_DIR_LIGHT_COUNT];
+        public static readonly int dirLightDirectionsAndMaskId = Shader.PropertyToID("_DirectionalLightWSDirectionsAndMasks");
+        public static readonly Vector4[] dirLightWSDirectionsAndMask = new Vector4[MAX_DIR_LIGHT_COUNT];
         
         public static readonly int dirLightShadowDataId = Shader.PropertyToID("_DirectionalLightShadowData");
         public static readonly Vector4[] dirLightShadowData = new Vector4[MAX_DIR_LIGHT_COUNT];
@@ -35,8 +35,8 @@ namespace CignalRP {
         public static readonly Vector4[] otherLightWSPositions = new Vector4[MAX_OTHER_LIGHT_COUNT];
         
         // 聚光灯
-        public static readonly int otherLightDirectionsId = Shader.PropertyToID("_OtherLightWSDirections");
-        public static readonly Vector4[] otherLightDirections = new Vector4[MAX_OTHER_LIGHT_COUNT];
+        public static readonly int otherLightDirectionsAndMaskId = Shader.PropertyToID("_OtherLightWSDirectionsAndMasks");
+        public static readonly Vector4[] otherLightDirectionsAndMask = new Vector4[MAX_OTHER_LIGHT_COUNT];
         
         public static readonly int otherLightSpotAnglesId = Shader.PropertyToID("_OtherLightSpotAngles");
         public static readonly Vector4[] otherLightSpotAngles = new Vector4[MAX_OTHER_LIGHT_COUNT];
@@ -120,7 +120,7 @@ namespace CignalRP {
             cmdBuffer.SetGlobalInt(dirLightCountId, dirLightCount);
             if (dirLightCount > 0) {
                 cmdBuffer.SetGlobalVectorArray(dirLightColorsId, dirLightColors);
-                cmdBuffer.SetGlobalVectorArray(dirLightDirectionsId, dirLightWSDirections);
+                cmdBuffer.SetGlobalVectorArray(dirLightDirectionsAndMaskId, dirLightWSDirectionsAndMask);
                 cmdBuffer.SetGlobalVectorArray(dirLightShadowDataId, dirLightShadowData);
             }
 
@@ -128,7 +128,7 @@ namespace CignalRP {
             if (otherLightCount > 0) {
                 cmdBuffer.SetGlobalVectorArray(otherLightColorsId, otherLightColors);
                 cmdBuffer.SetGlobalVectorArray(otherLightPositionsId, otherLightWSPositions);
-                cmdBuffer.SetGlobalVectorArray(otherLightDirectionsId, otherLightDirections);
+                cmdBuffer.SetGlobalVectorArray(otherLightDirectionsAndMaskId, otherLightDirectionsAndMask);
                 cmdBuffer.SetGlobalVectorArray(otherLightSpotAnglesId, otherLightSpotAngles);
                 cmdBuffer.SetGlobalVectorArray(otherLightShadowDataId, otherLightShadowData);
             }
@@ -145,8 +145,10 @@ namespace CignalRP {
             // 最后一列代表的是模型中心点的世界坐标
             // localspace的光源的forward方向
             // 方向：指向光源的方向，所以是负数
-            dirLightWSDirections[index] = -visibleLight.localToWorldMatrix.GetColumn(2);
-
+            var dirAndMask = -visibleLight.localToWorldMatrix.GetColumn(2);
+            dirAndMask.w = visibleLight.light.renderingLayerMask.ToFloat();
+            dirLightWSDirectionsAndMask[index] = dirAndMask;
+            
             // 保留Light阴影设置数据，得到可投射shadow的light数据
             // index是dirLightWSDirections的下标
             dirLightShadowData[index] = shadow.ReserveDirectionalShadows(visibleLight.light, visibleIndex);
@@ -170,6 +172,10 @@ namespace CignalRP {
             // 避免受到shader中计算spot的衰减受到影响
             otherLightSpotAngles[index] = new Vector4(0f, 1f);
 
+            var dirAndMask = Vector4.zero;
+            dirAndMask.w = visibleLight.light.renderingLayerMask.ToFloat();
+            otherLightDirectionsAndMask[index] = dirAndMask;
+
             Light light = visibleLight.light;
             otherLightShadowData[index] = shadow.ReserveOtherShadow(light, visibleIndex);
         }
@@ -177,7 +183,9 @@ namespace CignalRP {
         // 聚光灯 有位置，有方向
         private void SetupSpotLights(int index, int visibleIndex, ref VisibleLight visibleLight) {
             otherLightColors[index] = visibleLight.finalColor;
-            otherLightDirections[index] = -visibleLight.localToWorldMatrix.GetColumn(2);
+            var dirAndMask = -visibleLight.localToWorldMatrix.GetColumn(2);
+            dirAndMask.w = visibleLight.light.renderingLayerMask.ToFloat();
+            otherLightDirectionsAndMask[index] = dirAndMask;
             
             // 第4列是pos
             Vector4 pos = visibleLight.localToWorldMatrix.GetColumn(3);

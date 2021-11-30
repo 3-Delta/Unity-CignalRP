@@ -25,6 +25,11 @@ float3 GetLighting(FragSurface surface, BRDF brdf, Light light)
     return incomeLight * cookTorrance;
 }
 
+bool RenderingMayerOverlap(FragSurface surface, Light light)
+{
+    return (surface.renderingLayerMask & light.renderingLayerMask) != 0.0;
+}
+
 float3 GetLighting(FragSurface surface, BRDF brdf, GI gi)
 {
     ShadowData globalShadowData = GetShadowData(surface);
@@ -43,7 +48,10 @@ float3 GetLighting(FragSurface surface, BRDF brdf, GI gi)
     for(int i = 0, dirLightCount = GetDirectionalLightCount(); i < dirLightCount; ++ i)
     {
         Light light = GetDirectionalLight(i, surface, globalShadowData);
-        color += GetLighting(surface, brdf, light);
+        if(RenderingMayerOverlap(surface, light))
+        {
+            color += GetLighting(surface, brdf, light);
+        }
     }
 
     #if defined(_LIGHTS_PER_OBJECT)
@@ -51,13 +59,19 @@ float3 GetLighting(FragSurface surface, BRDF brdf, GI gi)
     {
         int lightIndex = unity_LightIndices[(uint)i / 4][(uint)i % 4];
         Light light = GetOtherLight(lightIndex, surface, globalShadowData);
-        color += GetLighting(surface, brdf, light);
+        if(RenderingMayerOverlap(surface, light))
+        {
+            color += GetLighting(surface, brdf, light);
+        }
     }
     #else
     for (int i = 0; i < GetOtherLightCount(); ++ i)
     {
         Light light = GetOtherLight(i, surface, globalShadowData);
-        color += GetLighting(surface, brdf, light);
+        if(RenderingMayerOverlap(surface, light))
+        {
+            color += GetLighting(surface, brdf, light);
+        }
     }
     #endif
     return color;

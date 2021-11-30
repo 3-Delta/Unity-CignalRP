@@ -46,6 +46,9 @@ CBUFFER_START(UnityPerDraw)
 	// 逐像素光源
 	real4 unity_LightData; // y:灯光数量
 	real4 unity_LightIndices[2]; // 共支持8个光源,每个是一个otherLightIndex
+
+	// mesh renderer的layermask
+	float4 unity_RenderingLayer;
 CBUFFER_END
 
 float4x4 unity_MatrixV;	// v

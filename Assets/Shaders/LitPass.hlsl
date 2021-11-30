@@ -77,6 +77,7 @@ float4 LitPassFragment(Varyings input) : SV_Target
     surface.metallic = GetMetallic(input.baseUV);
     surface.smoothness = GetSmoothness(input.baseUV);
     surface.fresnalStrength = GetFresnal(input.baseUV);
+    surface.renderingLayerMask = asuint(unity_RenderingLayer.x);
 
     // 填充BRDF
     BRDF brdf = GetBRDF(surface);
@@ -88,7 +89,7 @@ float4 LitPassFragment(Varyings input) : SV_Target
     
     // 最后添加自发光
     color += GetEmission(input.baseUV);
-    return float4(color, surface.alpha);
+    return float4(color, GetFinalAlpha(surface.alpha));
 }
 
 #endif

@@ -186,7 +186,9 @@ namespace CignalRP {
 
         private void RenderDirectionalShadow(int lightIndex, int countPerLine, int tileSize) {
             var light = shadowedDirectionalLights[lightIndex];
-            var shadowDrawSettings = new ShadowDrawingSettings(cullingResults, light.visibleLightIndex);
+            var shadowDrawSettings = new ShadowDrawingSettings(cullingResults, light.visibleLightIndex) {
+                useRenderingLayerMaskTest = true,
+            };
             int cascadeCount = shadowSettings.directionalShadow.cascadeCount;
             int startTileIndexOfThisLight = lightIndex * cascadeCount;
             Vector3 ratios = shadowSettings.directionalShadow.cascadeRatios;
@@ -244,7 +246,6 @@ namespace CignalRP {
                 }
             }
 
-
             cmdBuffer.SetGlobalMatrixArray(otherShadowMatricesId, otherShadowMatrices);
             cmdBuffer.SetGlobalVectorArray(otherShadowTilesId, otherShadowTiles);
             SetKeywords(otherFilterKeywords, (int) (shadowSettings.otherShadow.filterMode) - 1);
@@ -255,7 +256,9 @@ namespace CignalRP {
 
         private void RenderSpotShadow(int lightIndex, int countPerLine, int tileSize) {
             var light = shadowedOtherLights[lightIndex];
-            var shadowDrawSettings = new ShadowDrawingSettings(cullingResults, light.visibleLightIndex);
+            var shadowDrawSettings = new ShadowDrawingSettings(cullingResults, light.visibleLightIndex) {
+                useRenderingLayerMaskTest = true,
+            };
 
             cullingResults.ComputeSpotShadowMatricesAndCullingPrimitives(light.visibleLightIndex, out Matrix4x4 viewMatrix, out Matrix4x4 projMatrix, out ShadowSplitData splitData);
             shadowDrawSettings.splitData = splitData;
@@ -283,7 +286,9 @@ namespace CignalRP {
 
         private void RenderPointShadow(int lightIndex, int countPerLine, int tileSize) {
             var light = shadowedOtherLights[lightIndex];
-            var shadowDrawSettings = new ShadowDrawingSettings(cullingResults, light.visibleLightIndex);
+            var shadowDrawSettings = new ShadowDrawingSettings(cullingResults, light.visibleLightIndex) {
+                useRenderingLayerMaskTest = true,
+            };
 
             float texelSize = 2f / tileSize;
             float filterSize = texelSize * ((float) shadowSettings.otherShadow.filterMode + 1f);

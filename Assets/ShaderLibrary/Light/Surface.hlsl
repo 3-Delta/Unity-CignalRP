@@ -18,6 +18,9 @@ struct FragSurface
 
     // 菲涅尔反射强度
     float fresnalStrength;
+
+    // meshrenderer的layermask
+    uint renderingLayerMask;
 };
 
 #endif
