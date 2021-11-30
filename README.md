@@ -12,6 +12,9 @@
     A: cpu提前计算得到具体的哪种lightmap, 然后传递给gpu
 8. lightmap是否压缩是不是lightsetting中设置的?可以通过调整这个设置看一下framedebugger的参数传递
 9. 为什么shadowmask下 min(bakedShadow, realTimeShadow);是这种实现方式?而且是lerp(1)开始?
+10. camera/meshrenderer/light各自的renderinglayermask是怎么互相影响的?
+11. 怎么实现 只降低3dcamera分辨率,ui相机分辨率不变化?
+12. 反射 怎么 实现?
 
 
 学习资料:
