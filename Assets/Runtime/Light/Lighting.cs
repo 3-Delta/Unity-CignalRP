@@ -49,14 +49,14 @@ namespace CignalRP {
         private Shadow shadow = new Shadow();
 
         public void Setup(ref ScriptableRenderContext context, ref CullingResults cullingResults, ShadowSettings shadowSettings,
-            bool usePerObjectLights, int renderingLayerMask) {
+            bool usePerObjectLights, int cameraRenderingLayerMask) {
             this.context = context;
             this.cullingResults = cullingResults;
 
             cmdBuffer.BeginSample(ProfileName);
 
             shadow.Setup(ref context, ref cullingResults, shadowSettings);
-            SetLights(usePerObjectLights, renderingLayerMask);
+            SetLights(usePerObjectLights, cameraRenderingLayerMask);
             shadow.Render();
 
             cmdBuffer.EndSample(ProfileName);
@@ -68,7 +68,7 @@ namespace CignalRP {
             shadow.Clean();
         }
 
-        private void SetLights(bool usePerObjectLights, int renderingLayerMask) {
+        private void SetLights(bool usePerObjectLights, int cameraRenderingLayerMask) {
             NativeArray<int> indexMap = usePerObjectLights ? cullingResults.GetLightIndexMap(Allocator.Temp) : default;
             NativeArray<VisibleLight> visibleLights = cullingResults.visibleLights;
             int dirLightCount = 0;
@@ -77,7 +77,7 @@ namespace CignalRP {
             for (; i < visibleLights.Length; ++i) {
                 int newIndex = -1;
                 VisibleLight curVisibleLight = visibleLights[i];
-                int mask = curVisibleLight.light.renderingLayerMask & renderingLayerMask;
+                int mask = curVisibleLight.light.renderingLayerMask & cameraRenderingLayerMask;
                 if (mask != 0) {
                     switch (curVisibleLight.lightType) {
                         case LightType.Directional: {

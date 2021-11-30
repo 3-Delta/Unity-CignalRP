@@ -32,7 +32,7 @@ struct Light
     float lightAttenuation;
 
     // 光源的layerMask
-    uint renderingLayerMask;
+    uint lightRenderingLayerMask;
 
     float GetAttenuation()
     {
@@ -81,7 +81,7 @@ Light GetDirectionalLight(int lightIndex, FragSurface surface, ShadowData shadow
     light.color = _DirectionalLightColors[lightIndex];
     light.fragToLightDirectionWS = _DirectionalLightWSDirectionsAndMasks[lightIndex];
     light.lightAttenuation = 1;
-    light.renderingLayerMask = asuint(_DirectionalLightWSDirectionsAndMasks[lightIndex].w);
+    light.lightRenderingLayerMask = asuint(_DirectionalLightWSDirectionsAndMasks[lightIndex].w);
 
     DirectionalShadowData dirShadowData = GetDirectionalShadowData(lightIndex, shadowData);
     light.shadowAttenuation = GetDirectionalShadowAttenuation(dirShadowData, shadowData, surface);
@@ -94,7 +94,7 @@ Light GetOtherLight(int lightIndex, FragSurface surface, ShadowData globalShadow
     light.color = _OtherLightColors[lightIndex].rgb;
     float3 lightDirectionWS =  _OtherLightWSPositions[lightIndex].xyz - surface.positionWS;
     light.fragToLightDirectionWS = normalize(lightDirectionWS);
-    light.renderingLayerMask = asuint(_OtherLightWSDirectionsAndMasks[lightIndex].w);
+    light.lightRenderingLayerMask = asuint(_OtherLightWSDirectionsAndMasks[lightIndex].w);
 
     float distanceSqr = max(dot(lightDirectionWS, lightDirectionWS), 0.00001);
     // 因为球体范围，球体表面积是4Pi*R*R, 所以衰减是R*R的反比

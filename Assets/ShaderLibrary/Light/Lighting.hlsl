@@ -27,7 +27,7 @@ float3 GetLighting(FragSurface surface, BRDF brdf, Light light)
 
 bool RenderingMayerOverlap(FragSurface surface, Light light)
 {
-    return (surface.renderingLayerMask & light.renderingLayerMask) != 0.0;
+    return (surface.meshRenderingLayerMask & light.lightRenderingLayerMask) != 0.0;
 }
 
 float3 GetLighting(FragSurface surface, BRDF brdf, GI gi)

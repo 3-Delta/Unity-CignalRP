@@ -20,7 +20,7 @@ struct FragSurface
     float fresnalStrength;
 
     // meshrenderer的layermask
-    uint renderingLayerMask;
+    uint meshRenderingLayerMask;
 };
 
 #endif

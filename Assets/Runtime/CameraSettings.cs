@@ -1,6 +1,7 @@
 ﻿using System;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Serialization;
 
 namespace CignalRP {
     [Serializable]
@@ -23,7 +24,8 @@ namespace CignalRP {
         public bool enablePostProcess = true;
         public bool overridePostProcess = false;
 
-        public bool maskLights = false;
+        // camera的layermask是否影响light
+        public bool toMaskLights = false;
         [RenderingLayerMaskField] public int renderingLayerMask = -1; // 默认everything
         
         public PostProcessSettings postProcessSettings;

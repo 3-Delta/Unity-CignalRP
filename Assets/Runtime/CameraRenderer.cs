@@ -15,7 +15,7 @@ namespace CignalRP {
         private CullingResults cullingResults;
 
         public CameraRendererIni cameraIni;
-        
+
         public CameraSettings cameraSettings {
             get {
                 if (cameraIni != null) {
@@ -136,8 +136,8 @@ namespace CignalRP {
         #region Pre/Post Draw
         private void PreDraw(ShadowSettings shadowSettings, bool usePerObjectLights) {
             // 设置光源,阴影信息, 内含shadowmap的渲染， 所以需要在正式的相机参数等之前先渲染， 否则放在函数最尾巴，则渲染为一片黑色
-            this.lighting.Setup(ref this.context, ref this.cullingResults, shadowSettings, usePerObjectLights, 
-                cameraSettings.maskLights ? cameraSettings.renderingLayerMask : -1);
+            this.lighting.Setup(ref this.context, ref this.cullingResults, shadowSettings, usePerObjectLights,
+                cameraSettings.toMaskLights ? cameraSettings.renderingLayerMask : -1);
             this.postProcessStack.Setup(ref this.context, this.camera, this.postProcessSettings, allowHDR);
 
             // 设置vp矩阵给shader的unity_MatrixVP属性，在Framedebugger中选中某个dc可看
@@ -205,7 +205,7 @@ namespace CignalRP {
             if (step == EProfileStep.Begin) {
                 cmdBuffer.BeginSample(sampleName);
             }
-            else if(step == EProfileStep.End) {
+            else if (step == EProfileStep.End) {
                 cmdBuffer.EndSample(sampleName);
             }
 
@@ -219,8 +219,8 @@ namespace CignalRP {
         }
 
         #region Draw
-        private void Draw(bool useDynamicBatching, bool useGPUInstancing, bool usePerObjectLights, 
-            int renderingLayerMask) {
+        private void Draw(bool useDynamicBatching, bool useGPUInstancing, bool usePerObjectLights,
+            int cameraRenderingLayerMask) {
             PerObjectData lightPerObjectFlags = PerObjectData.None;
             if (usePerObjectLights) {
                 // 每个对象收到几个哪几个光源的影响?
@@ -236,22 +236,19 @@ namespace CignalRP {
                 enableDynamicBatching = useDynamicBatching,
                 enableInstancing = useGPUInstancing,
                 // 传递obj在lightmap中的uv
-                perObjectData = PerObjectData.Lightmaps | 
-                                PerObjectData.LightProbe | 
+                perObjectData = PerObjectData.Lightmaps |
+                                PerObjectData.LightProbe |
                                 PerObjectData.LightProbeProxyVolume | // lppv
-                                
                                 PerObjectData.ShadowMask |
                                 PerObjectData.OcclusionProbe |
                                 PerObjectData.OcclusionProbeProxyVolume |
-                                
                                 PerObjectData.ReflectionProbes |
-                                
                                 lightPerObjectFlags
             };
             // 渲染CRP光照的pass
             drawingSettings.SetShaderPassName(1, LitShaderTagId);
 
-            var filteringSetttings = new FilteringSettings(RenderQueueRange.opaque, renderingLayerMask, (uint)renderingLayerMask);
+            var filteringSetttings = new FilteringSettings(RenderQueueRange.opaque, cameraRenderingLayerMask, (uint)cameraRenderingLayerMask);
             this.context.DrawRenderers(this.cullingResults, ref drawingSettings, ref filteringSetttings);
 
             // step2: 绘制天空盒

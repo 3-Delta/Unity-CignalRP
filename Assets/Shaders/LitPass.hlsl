@@ -77,7 +77,7 @@ float4 LitPassFragment(Varyings input) : SV_Target
     surface.metallic = GetMetallic(input.baseUV);
     surface.smoothness = GetSmoothness(input.baseUV);
     surface.fresnalStrength = GetFresnal(input.baseUV);
-    surface.renderingLayerMask = asuint(unity_RenderingLayer.x);
+    surface.meshRenderingLayerMask = asuint(unity_RenderingLayer.x);
 
     // 填充BRDF
     BRDF brdf = GetBRDF(surface);
