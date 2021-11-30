@@ -14,6 +14,18 @@ namespace CignalRP {
         private ScriptableRenderContext context;
         private CullingResults cullingResults;
 
+        public CameraRendererIni cameraIni;
+        
+        public CameraSettings cameraSettings {
+            get {
+                if (cameraIni != null) {
+                    return cameraIni.cameraSettings;
+                }
+
+                return CameraSettings.Default;
+            }
+        }
+
         private Lighting lighting = new Lighting();
 
         public static readonly int FramebufferId = Shader.PropertyToID("_CameraFrameBuffer");
@@ -35,7 +47,7 @@ namespace CignalRP {
             this.context = context;
             this.postProcessSettings = postProcessSettings;
 
-            if (camera.TryGetComponent(out CameraRendererIni cameraIni)) {
+            if (camera.TryGetComponent(out cameraIni)) {
                 if (cameraIni.cameraSettings.rendererFrequency <= 0) {
                     cameraIni.cameraSettings.rendererFrequency = -1;
                 }
@@ -86,7 +98,7 @@ namespace CignalRP {
             Profiler.EndSample();
 #endif
             ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, ProfileName);
-            this.Draw(useDynamicBatching, useGPUInstancing, usePerObjectLights);
+            this.Draw(useDynamicBatching, useGPUInstancing, usePerObjectLights, cameraSettings.renderingLayerMask);
             ProfileSample(ref context, cmdBuffer, EProfileStep.End, ProfileName);
             #endregion
 
@@ -124,7 +136,8 @@ namespace CignalRP {
         #region Pre/Post Draw
         private void PreDraw(ShadowSettings shadowSettings, bool usePerObjectLights) {
             // 设置光源,阴影信息, 内含shadowmap的渲染， 所以需要在正式的相机参数等之前先渲染， 否则放在函数最尾巴，则渲染为一片黑色
-            this.lighting.Setup(ref this.context, ref this.cullingResults, shadowSettings, usePerObjectLights);
+            this.lighting.Setup(ref this.context, ref this.cullingResults, shadowSettings, usePerObjectLights, 
+                cameraSettings.maskLights ? cameraSettings.renderingLayerMask : -1);
             this.postProcessStack.Setup(ref this.context, this.camera, this.postProcessSettings, allowHDR);
 
             // 设置vp矩阵给shader的unity_MatrixVP属性，在Framedebugger中选中某个dc可看
@@ -206,7 +219,8 @@ namespace CignalRP {
         }
 
         #region Draw
-        private void Draw(bool useDynamicBatching, bool useGPUInstancing, bool usePerObjectLights) {
+        private void Draw(bool useDynamicBatching, bool useGPUInstancing, bool usePerObjectLights, 
+            int renderingLayerMask) {
             PerObjectData lightPerObjectFlags = PerObjectData.None;
             if (usePerObjectLights) {
                 // 每个对象收到几个哪几个光源的影响?
@@ -237,7 +251,7 @@ namespace CignalRP {
             // 渲染CRP光照的pass
             drawingSettings.SetShaderPassName(1, LitShaderTagId);
 
-            var filteringSetttings = new FilteringSettings(RenderQueueRange.opaque);
+            var filteringSetttings = new FilteringSettings(RenderQueueRange.opaque, renderingLayerMask, (uint)renderingLayerMask);
             this.context.DrawRenderers(this.cullingResults, ref drawingSettings, ref filteringSetttings);
 
             // step2: 绘制天空盒

@@ -15,48 +15,48 @@ namespace CignalRP {
 
         public const int MAX_DIR_LIGHT_COUNT = 4;
         public static readonly int dirLightCountId = Shader.PropertyToID("_DirectionalLightCount");
-        
+
         public static readonly int dirLightColorsId = Shader.PropertyToID("_DirectionalLightColors");
         public static readonly Vector4[] dirLightColors = new Vector4[MAX_DIR_LIGHT_COUNT];
-        
+
         public static readonly int dirLightDirectionsAndMaskId = Shader.PropertyToID("_DirectionalLightWSDirectionsAndMasks");
         public static readonly Vector4[] dirLightWSDirectionsAndMask = new Vector4[MAX_DIR_LIGHT_COUNT];
-        
+
         public static readonly int dirLightShadowDataId = Shader.PropertyToID("_DirectionalLightShadowData");
         public static readonly Vector4[] dirLightShadowData = new Vector4[MAX_DIR_LIGHT_COUNT];
-        
+
         public const int MAX_OTHER_LIGHT_COUNT = 64;
         public static readonly int otherLightCountId = Shader.PropertyToID("_OtherLightCount");
-        
+
         public static readonly int otherLightColorsId = Shader.PropertyToID("_OtherLightColors");
         public static readonly Vector4[] otherLightColors = new Vector4[MAX_OTHER_LIGHT_COUNT];
-        
+
         public static readonly int otherLightPositionsId = Shader.PropertyToID("_OtherLightWSPositions");
         public static readonly Vector4[] otherLightWSPositions = new Vector4[MAX_OTHER_LIGHT_COUNT];
-        
+
         // 聚光灯
         public static readonly int otherLightDirectionsAndMaskId = Shader.PropertyToID("_OtherLightWSDirectionsAndMasks");
         public static readonly Vector4[] otherLightDirectionsAndMask = new Vector4[MAX_OTHER_LIGHT_COUNT];
-        
+
         public static readonly int otherLightSpotAnglesId = Shader.PropertyToID("_OtherLightSpotAngles");
         public static readonly Vector4[] otherLightSpotAngles = new Vector4[MAX_OTHER_LIGHT_COUNT];
-        
+
         public static readonly int otherLightShadowDataId = Shader.PropertyToID("_OtherLightShadowData");
         public static readonly Vector4[] otherLightShadowData = new Vector4[MAX_OTHER_LIGHT_COUNT];
-        
+
         public static readonly string lightsPerObjectKeyword = "_LIGHTS_PER_OBJECT";
 
         private Shadow shadow = new Shadow();
 
-        public void Setup(ref ScriptableRenderContext context, ref CullingResults cullingResults, ShadowSettings shadowSettings, 
-            bool usePerObjectLights) {
+        public void Setup(ref ScriptableRenderContext context, ref CullingResults cullingResults, ShadowSettings shadowSettings,
+            bool usePerObjectLights, int renderingLayerMask) {
             this.context = context;
             this.cullingResults = cullingResults;
 
             cmdBuffer.BeginSample(ProfileName);
 
             shadow.Setup(ref context, ref cullingResults, shadowSettings);
-            SetLights(usePerObjectLights);
+            SetLights(usePerObjectLights, renderingLayerMask);
             shadow.Render();
 
             cmdBuffer.EndSample(ProfileName);
@@ -68,7 +68,7 @@ namespace CignalRP {
             shadow.Clean();
         }
 
-        private void SetLights(bool usePerObjectLights) {
+        private void SetLights(bool usePerObjectLights, int renderingLayerMask) {
             NativeArray<int> indexMap = usePerObjectLights ? cullingResults.GetLightIndexMap(Allocator.Temp) : default;
             NativeArray<VisibleLight> visibleLights = cullingResults.visibleLights;
             int dirLightCount = 0;
@@ -77,38 +77,43 @@ namespace CignalRP {
             for (; i < visibleLights.Length; ++i) {
                 int newIndex = -1;
                 VisibleLight curVisibleLight = visibleLights[i];
-                switch (curVisibleLight.lightType) {
-                    case LightType.Directional: {
-                        if (dirLightCount < MAX_DIR_LIGHT_COUNT) {
-                            SetupDirectionalLights(dirLightCount++, i, ref curVisibleLight);
+                int mask = curVisibleLight.light.renderingLayerMask & renderingLayerMask;
+                if (mask != 0) {
+                    switch (curVisibleLight.lightType) {
+                        case LightType.Directional: {
+                            if (dirLightCount < MAX_DIR_LIGHT_COUNT) {
+                                SetupDirectionalLights(dirLightCount++, i, ref curVisibleLight);
+                            }
                         }
+                            break;
+                        case LightType.Point: {
+                            if (otherLightCount < MAX_OTHER_LIGHT_COUNT) {
+                                newIndex = otherLightCount;
+                                SetupPointLights(otherLightCount++, i, ref curVisibleLight);
+                            }
+                        }
+                            break;
+                        case LightType.Spot:
+                            if (otherLightCount < MAX_OTHER_LIGHT_COUNT) {
+                                newIndex = otherLightCount;
+                                SetupSpotLights(otherLightCount++, i, ref curVisibleLight);
+                            }
+
+                            break;
                     }
-                        break;
-                    case LightType.Point: {
-                        if (otherLightCount < MAX_OTHER_LIGHT_COUNT) {
-                            newIndex = otherLightCount;
-                            SetupPointLights(otherLightCount++, i, ref curVisibleLight);
-                        }
-                    }
-                        break;
-                    case LightType.Spot:
-                        if (otherLightCount < MAX_OTHER_LIGHT_COUNT) {
-                            newIndex = otherLightCount;
-                            SetupSpotLights(otherLightCount++, i, ref curVisibleLight);
-                        }
-                        break;
                 }
 
                 if (usePerObjectLights) {
                     indexMap[i] = newIndex;
                 }
             }
-            
+
             if (usePerObjectLights) {
                 // cullingResults.visibleLights只是可见光源,还有不可见光源,这里剔除
                 for (; i < indexMap.Length; i++) {
                     indexMap[i] = -1;
                 }
+
                 cullingResults.SetLightIndexMap(indexMap);
                 Shader.EnableKeyword(lightsPerObjectKeyword);
                 indexMap.Dispose();
@@ -148,7 +153,7 @@ namespace CignalRP {
             var dirAndMask = -visibleLight.localToWorldMatrix.GetColumn(2);
             dirAndMask.w = visibleLight.light.renderingLayerMask.ToFloat();
             dirLightWSDirectionsAndMask[index] = dirAndMask;
-            
+
             // 保留Light阴影设置数据，得到可投射shadow的light数据
             // index是dirLightWSDirections的下标
             dirLightShadowData[index] = shadow.ReserveDirectionalShadows(visibleLight.light, visibleIndex);
@@ -156,7 +161,7 @@ namespace CignalRP {
             // Light light = RenderSettings.sun;
             // cmdBuffer.SetGlobalVector(dirLightColorId, light.color.linear * light.intensity);
             // cmdBuffer.SetGlobalVector(dirLightDirectionId, -light.transform.forward);
-            
+
             // 没有位置， 角度， 衰减， 只有方向
         }
 
@@ -168,7 +173,7 @@ namespace CignalRP {
             // 限制点光范围，同时不在边界突然消失，而是fade
             pos.w = 1f / Mathf.Max(visibleLight.range * visibleLight.range, 0.00001f);
             otherLightWSPositions[index] = pos;
-            
+
             // 避免受到shader中计算spot的衰减受到影响
             otherLightSpotAngles[index] = new Vector4(0f, 1f);
 
@@ -186,7 +191,7 @@ namespace CignalRP {
             var dirAndMask = -visibleLight.localToWorldMatrix.GetColumn(2);
             dirAndMask.w = visibleLight.light.renderingLayerMask.ToFloat();
             otherLightDirectionsAndMask[index] = dirAndMask;
-            
+
             // 第4列是pos
             Vector4 pos = visibleLight.localToWorldMatrix.GetColumn(3);
             // 限制点光范围，同时不在边界突然消失，而是fade
