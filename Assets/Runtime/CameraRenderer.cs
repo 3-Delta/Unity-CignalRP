@@ -98,7 +98,7 @@ namespace CignalRP {
             Profiler.EndSample();
 #endif
             ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, ProfileName);
-            this.Draw(useDynamicBatching, useGPUInstancing, usePerObjectLights, cameraSettings.renderingLayerMask);
+            this.Draw(useDynamicBatching, useGPUInstancing, usePerObjectLights, cameraSettings.cameraLayerMask);
             ProfileSample(ref context, cmdBuffer, EProfileStep.End, ProfileName);
             #endregion
 
@@ -137,7 +137,7 @@ namespace CignalRP {
         private void PreDraw(ShadowSettings shadowSettings, bool usePerObjectLights) {
             // 设置光源,阴影信息, 内含shadowmap的渲染， 所以需要在正式的相机参数等之前先渲染， 否则放在函数最尾巴，则渲染为一片黑色
             this.lighting.Setup(ref this.context, ref this.cullingResults, shadowSettings, usePerObjectLights,
-                cameraSettings.toMaskLights ? cameraSettings.renderingLayerMask : -1);
+                cameraSettings.toMaskLights ? cameraSettings.cameraLayerMask : -1);
             this.postProcessStack.Setup(ref this.context, this.camera, this.postProcessSettings, allowHDR);
 
             // 设置vp矩阵给shader的unity_MatrixVP属性，在Framedebugger中选中某个dc可看
@@ -248,7 +248,7 @@ namespace CignalRP {
             // 渲染CRP光照的pass
             drawingSettings.SetShaderPassName(1, LitShaderTagId);
 
-            var filteringSetttings = new FilteringSettings(RenderQueueRange.opaque, cameraRenderingLayerMask, (uint)cameraRenderingLayerMask);
+            var filteringSetttings = new FilteringSettings(RenderQueueRange.opaque, camera.cullingMask, (uint)cameraRenderingLayerMask);
             this.context.DrawRenderers(this.cullingResults, ref drawingSettings, ref filteringSetttings);
 
             // step2: 绘制天空盒

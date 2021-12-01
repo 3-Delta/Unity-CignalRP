@@ -19,12 +19,12 @@ namespace CignalRP {
         public bool overridePostProcess = false;
         public PostProcessSettings postProcessSettings;
 
-        [Header("多相机blend")] [SerializeField] public FinalBlendMode finalBlendMode = new FinalBlendMode() {
+        [Header("多相机blend,影响后处理rt的blend")] public FinalBlendMode finalBlendMode = new FinalBlendMode() {
             src = BlendMode.One,
             dest = BlendMode.Zero
         };
 
         [Header("相机layermask是否影响光源")] public bool toMaskLights = false;
-        [RenderingLayerMaskField] public int renderingLayerMask = -1; // 默认everything
+        [RenderingLayerMaskField] public int cameraLayerMask = -1; // 默认everything
     }
 }
