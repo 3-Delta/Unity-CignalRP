@@ -8,26 +8,23 @@ namespace CignalRP {
     public class CameraSettings {
         public static readonly CameraSettings Default = new CameraSettings();
 
-        // 相机渲染帧率
-        public int rendererFrequency = -1;
-
         [Serializable]
         public struct FinalBlendMode {
             public BlendMode src, dest;
         }
 
-        [SerializeField] public FinalBlendMode finalBlendMode = new FinalBlendMode() {
+        [Header("相机渲染帧率")] public int rendererFrequency = -1;
+
+        [Header("后处理")] public bool enablePostProcess = true;
+        public bool overridePostProcess = false;
+        public PostProcessSettings postProcessSettings;
+
+        [Header("多相机blend")] [SerializeField] public FinalBlendMode finalBlendMode = new FinalBlendMode() {
             src = BlendMode.One,
             dest = BlendMode.Zero
         };
 
-        public bool enablePostProcess = true;
-        public bool overridePostProcess = false;
-
-        // camera的layermask是否影响light
-        public bool toMaskLights = false;
+        [Header("相机layermask是否影响光源")] public bool toMaskLights = false;
         [RenderingLayerMaskField] public int renderingLayerMask = -1; // 默认everything
-        
-        public PostProcessSettings postProcessSettings;
     }
 }

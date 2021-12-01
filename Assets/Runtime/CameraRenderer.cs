@@ -162,7 +162,7 @@ namespace CignalRP {
                 }
 
                 RenderTextureFormat format = allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
-                this.cmdBuffer.GetTemporaryRT(FramebufferId, this.camera.pixelHeight, this.camera.pixelHeight, 32,
+                this.cmdBuffer.GetTemporaryRT(FramebufferId, this.camera.pixelWidth, this.camera.pixelHeight, 32,
                     FilterMode.Bilinear, format);
                 this.cmdBuffer.SetRenderTarget(FramebufferId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             }

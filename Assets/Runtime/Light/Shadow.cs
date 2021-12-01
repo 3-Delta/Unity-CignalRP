@@ -187,6 +187,7 @@ namespace CignalRP {
         private void RenderDirectionalShadow(int lightIndex, int countPerLine, int tileSize) {
             var light = shadowedDirectionalLights[lightIndex];
             var shadowDrawSettings = new ShadowDrawingSettings(cullingResults, light.visibleLightIndex) {
+                // 让shadow也受layermask影响
                 useRenderingLayerMaskTest = true,
             };
             int cascadeCount = shadowSettings.directionalShadow.cascadeCount;

@@ -151,6 +151,9 @@ namespace CignalRP {
             // localspace的光源的forward方向
             // 方向：指向光源的方向，所以是负数
             var dirAndMask = -visibleLight.localToWorldMatrix.GetColumn(2);
+            
+            // 因为light的cullmask支持不完善，所以urp使用renderelayermask代替。
+            // light的cullmask只会影响shadow, 不像camera那样，会影响到物体的颜色表现和投射,接收阴影
             dirAndMask.w = visibleLight.light.renderingLayerMask.ToFloat();
             dirLightWSDirectionsAndMask[index] = dirAndMask;
 

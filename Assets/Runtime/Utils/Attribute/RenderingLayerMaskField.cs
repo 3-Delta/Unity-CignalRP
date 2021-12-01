@@ -20,9 +20,9 @@ namespace CignalRP {
 
             mask = EditorGUI.MaskField(position, label, mask, GraphicsSettings.currentRenderPipeline.renderingLayerMaskNames);
             if (EditorGUI.EndChangeCheck()) {
-                property.intValue = isUInt && mask == -1 ? int.MinValue : mask;
+                property.intValue = isUInt && mask == -1 ? int.MaxValue : mask;
             }
-
+            
             EditorGUI.showMixedValue = false;
         }
 

@@ -31,7 +31,7 @@ namespace CignalRP {
         static CRPCreator() {
             _renderingLayerNames = new string[32];
             for (int i = 0; i < _renderingLayerNames.Length; ++i) {
-                _renderingLayerNames[i] = "Layer" + (i + 1);
+                _renderingLayerNames[i] = "LayerMask" + (i + 1);
             }
         }
 #endif
