@@ -74,10 +74,11 @@ float4 UnlitPassFragment(Varyings input) : SV_Target
     UNITY_SETUP_INSTANCE_ID(input);
     // 类似于 arrayUnityPerMaterial[unity_InstanceID]._BaseColor
     // 根据一个vertex的static获取显存数据
-    float4 base = GetBase(input.baseUV);
+    InputConfig config = GetInputConfig(input.baseUV);
+    float4 base = GetBase(config);
 
     #if defined(_CLIPPING)
-    clip(base.a - GetCutoff(input.baseUV));
+    clip(base.a - GetCutoff(config));
     #endif
 
     return float4(base.rgb, GetFinalAlpha(base.a));

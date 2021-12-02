@@ -38,7 +38,7 @@
             ENDHLSL
         }
     	
-    	pass
+    	pass // 粒子是动态的，所以不需要这个给lightmap的pass
     	{
     		Tags
     		{

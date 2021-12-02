@@ -28,42 +28,55 @@ UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
     UNITY_DEFINE_INSTANCED_PROP(float, _ZWrite)
 UNITY_INSTANCING_BUFFER_END(UnityPerMaterial)
 
+struct InputConfig
+{
+    float2 baseUV;
+};
+
+InputConfig GetInputConfig(float2 baseUV)
+{
+    InputConfig c;
+    c.baseUV = baseUV;
+    return c;
+}
+
 float2 TransformBaseUV(float2 baseUV)
 {
     float4 baseST = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseMap_ST);
     return baseUV * baseST.xy + baseST.zw;
 }
 
-float4 GetBase(float2 baseUV)
+float4 GetBase(InputConfig input)
 {
-    float4 texelColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, baseUV);
+    float4 texelColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.baseUV);
     float4 color = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseColor);
     return texelColor * color;
 }
 
 // 自发光选项
-float3 GetEmission(float2 baseUV) {
-    float4 texelColor = SAMPLE_TEXTURE2D(_EmissionMap, sampler_BaseMap, baseUV);
+float3 GetEmission(InputConfig input)
+{
+    float4 texelColor = SAMPLE_TEXTURE2D(_EmissionMap, sampler_BaseMap, input.baseUV);
     float4 color = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _EmissionColor);
     return texelColor.rgb * color.rgb;
 }
 
-float GetCutoff(float2 baseUV)
+float GetCutoff(InputConfig input)
 {
     return UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff);
 }
 
-float GetMetallic(float2 baseUV)
+float GetMetallic(InputConfig input)
 {
     return UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Metallic);
 }
 
-float GetSmoothness(float2 baseUV)
+float GetSmoothness(InputConfig input)
 {
     return UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Smoothness);
 }
 
-float GetFresnal(float2 baseUV)
+float GetFresnal(InputConfig input)
 {
     return UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Fresnal);
 }

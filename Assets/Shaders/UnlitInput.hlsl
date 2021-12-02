@@ -6,16 +6,28 @@ TEXTURE2D(_BaseMap);
 SAMPLER(sampler_BaseMap);
 
 UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
-    UNITY_DEFINE_INSTANCED_PROP(float4, _BaseMap_ST)
-    UNITY_DEFINE_INSTANCED_PROP(float4, _BaseColor)
-    UNITY_DEFINE_INSTANCED_PROP(float, _Cutoff)
+UNITY_DEFINE_INSTANCED_PROP(float4, _BaseMap_ST)
+UNITY_DEFINE_INSTANCED_PROP(float4, _BaseColor)
+UNITY_DEFINE_INSTANCED_PROP(float, _Cutoff)
 
-    // 因为不受光,所以不需要
-    // UNITY_DEFINE_INSTANCED_PROP(float, _Metallic)
-    // UNITY_DEFINE_INSTANCED_PROP(float, _Smoothness)
+// 因为不受光,所以不需要
+// UNITY_DEFINE_INSTANCED_PROP(float, _Metallic)
+// UNITY_DEFINE_INSTANCED_PROP(float, _Smoothness)
 
-    UNITY_DEFINE_INSTANCED_PROP(float, _ZWrite)
+UNITY_DEFINE_INSTANCED_PROP(float, _ZWrite)
 UNITY_INSTANCING_BUFFER_END(UnityPerMaterial)
+
+struct InputConfig
+{
+    float2 baseUV;
+};
+
+InputConfig GetInputConfig(float2 baseUV)
+{
+    InputConfig c;
+    c.baseUV = baseUV;
+    return c;
+}
 
 float2 TransformBaseUV(float2 baseUV)
 {
@@ -23,28 +35,31 @@ float2 TransformBaseUV(float2 baseUV)
     return baseUV * baseST.xy + baseST.zw;
 }
 
-float4 GetBase(float2 baseUV)
+float4 GetBase(InputConfig input)
 {
-    float4 texelColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, baseUV);
+    float4 texelColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.baseUV);
     float4 color = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseColor);
     return texelColor * color;
 }
 
 // 自发光选项
-float3 GetEmission(float2 baseUV) {
-    return GetBase(baseUV).rgb;
+float3 GetEmission(InputConfig input)
+{
+    return GetBase(input).rgb;
 }
 
-float GetCutoff(float2 baseUV)
+float GetCutoff(InputConfig input)
 {
     return UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff);
 }
 
-float GetMetallic (float2 baseUV) {
+float GetMetallic(InputConfig input)
+{
     return 0.0;
 }
 
-float GetSmoothness (float2 baseUV) {
+float GetSmoothness(InputConfig input)
+{
     return 0.0;
 }
 

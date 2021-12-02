@@ -54,10 +54,11 @@ Varyings LitPassVertex(Attributes input)
 float4 LitPassFragment(Varyings input) : SV_Target
 {
     UNITY_SETUP_INSTANCE_ID(input);
-    float4 base = GetBase(input.baseUV);
+    InputConfig config = GetInputConfig(input.baseUV);
+    float4 base = GetBase(config);
 
     #if defined(_CLIPPING)
-        clip(base.a - GetCutoff(input.baseUV));
+        clip(base.a - GetCutoff(config));
     #endif
 
     // 填充surface
@@ -74,9 +75,9 @@ float4 LitPassFragment(Varyings input) : SV_Target
     surface.alpha = base.a;
     surface.viewDirectionWS = normalize(_WorldSpaceCameraPos - input.positionWS);
     surface.depthVS = -TransformWorldToView(input.positionWS).z;
-    surface.metallic = GetMetallic(input.baseUV);
-    surface.smoothness = GetSmoothness(input.baseUV);
-    surface.fresnalStrength = GetFresnal(input.baseUV);
+    surface.metallic = GetMetallic(config);
+    surface.smoothness = GetSmoothness(config);
+    surface.fresnalStrength = GetFresnal(config);
     surface.meshRenderingLayerMask = asuint(unity_RenderingLayer.x);
 
     // 填充BRDF
@@ -88,7 +89,7 @@ float4 LitPassFragment(Varyings input) : SV_Target
     float3 color = GetLighting(surface, brdf, gi);
     
     // 最后添加自发光
-    color += GetEmission(input.baseUV);
+    color += GetEmission(config);
     return float4(color, GetFinalAlpha(surface.alpha));
 }
 

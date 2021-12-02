@@ -46,11 +46,12 @@ Varyings ShadowCasterPassVertex(Attributes input)
 void ShadowCasterPassFragment(Varyings input)
 {
     UNITY_SETUP_INSTANCE_ID(input);
-    float4 base = GetBase(input.baseUV);
+    InputConfig config = GetInputConfig(input.baseUV);
+    float4 base = GetBase(config);
 
     // 因为需要对于alphatest的镂空区域过滤，否则镂空区域会进入shadowmap,造成阴影错误
     #if defined(_SHADOWS_CLIP)
-        float cutoff = GetCutoff(input.baseUV);
+        float cutoff = GetCutoff(config);
         clip(base.a - cutoff);
     #elif defined(_SHADOWS_DITHER)
         float dither = InterleavedGradientNoise(input.positionCS.xy, 0);
