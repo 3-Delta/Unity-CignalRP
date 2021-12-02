@@ -49,6 +49,10 @@ CBUFFER_START(UnityPerDraw)
 
 	// mesh renderer的layermask
 	float4 unity_RenderingLayer;
+
+	float4 _ProjectionParams;
+	// 正交相机信息,如果是正交消极，w为1，否则0
+	float4 unity_OrthoParams;
 CBUFFER_END
 
 float4x4 unity_MatrixV;	// v

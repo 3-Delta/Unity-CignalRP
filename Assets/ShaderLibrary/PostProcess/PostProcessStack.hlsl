@@ -6,13 +6,8 @@
 
 TEXTURE2D(_PostProcessSource1);
 TEXTURE2D(_PostProcessSource2);
-SAMPLER(sampler_linear_clamp);
 
 float4 _PostProcessSource_TexelSize;
-
-// unity会设置 
-// 投影控制
-float4 _ProjectionParams;
 
 struct Varyings
 {

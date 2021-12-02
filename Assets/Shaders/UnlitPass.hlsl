@@ -45,15 +45,15 @@ struct Attributes
 
 struct Varyings
 {
-    float4 positionCS : SV_POSITION;
+    float4 positionCS_SS : SV_POSITION;
 #if defined(_VERTEX_COLOR)
     float4 color : VAR_COLOR;
 #endif
     float2 baseUV : VAR_BASE_UV;
 
-    #if defined(_FLIPBOOK_BLEND)
+#if defined(_FLIPBOOK_BLEND)
     float3 flipBookUVB : VAR_FLIPBOOK;
-    #endif
+#endif
     UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
@@ -70,7 +70,7 @@ Varyings UnlitPassVertex(Attributes input)
     // 类似于 output.instanceID = input.instanceID
     UNITY_TRANSFER_INSTANCE_ID(input, output);
     float3 positionWS = TransformObjectToWorld(input.positionOS);
-    output.positionCS = TransformWorldToHClip(positionWS);
+    output.positionCS_SS = TransformWorldToHClip(positionWS);
 
 #if defined(_VERTEX_COLOR)
     output.color = input.color;
@@ -82,7 +82,6 @@ Varyings UnlitPassVertex(Attributes input)
     output.flipBookUVB.z = input.flipBookBlendFactor;
 #endif
 
-    
     return output;
 }
 
@@ -91,20 +90,25 @@ float4 UnlitPassFragment(Varyings input) : SV_Target
     UNITY_SETUP_INSTANCE_ID(input);
     // 类似于 arrayUnityPerMaterial[unity_InstanceID]._BaseColor
     // 根据一个vertex的static获取显存数据
-    InputConfig config = GetInputConfig(input.baseUV);
+    InputConfig config = GetInputConfig(input.positionCS_SS, input.baseUV);
 #if defined(_VERTEX_COLOR)
     config.color = CRP_INPUT_INCLUDED.color;
 #endif
+    
 #if defined(_FLIPBOOK_BLEND)
     config.flipBookUVB = input.flipBookUVB;
     config.useFlipBookBlend = true;
 #endif
+
+#if defined(_FLIPBOOK_BLEND)
+    config.nearFade = true;
+#endif
     
     float4 base = GetBase(config);
 
-    #if defined(_CLIPPING)
+#if defined(_CLIPPING)
     clip(base.a - GetCutoff(config));
-    #endif
+#endif
 
     return float4(base.rgb, GetFinalAlpha(base.a));
 }

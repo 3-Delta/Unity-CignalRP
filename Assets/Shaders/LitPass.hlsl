@@ -23,7 +23,7 @@ struct Attributes {
 };
 
 struct Varyings {
-    float4 positionCS : SV_POSITION;
+    float4 positionCS_SS : SV_POSITION;
     float3 positionWS : VAR_POSITION;
     float2 baseUV : VAR_BASE_UV;
 
@@ -43,7 +43,7 @@ Varyings LitPassVertex(Attributes input)
     TRANSFER_GI_DATA(input, output);
     
     float3 positionWS = TransformObjectToWorld(input.positionOS);
-    output.positionCS = TransformWorldToHClip(positionWS);
+    output.positionCS_SS = TransformWorldToHClip(positionWS);
     output.positionWS = positionWS;
     output.normalWS = TransformObjectToWorldNormal(input.normalOS);
 
@@ -54,12 +54,12 @@ Varyings LitPassVertex(Attributes input)
 float4 LitPassFragment(Varyings input) : SV_Target
 {
     UNITY_SETUP_INSTANCE_ID(input);
-    InputConfig config = GetInputConfig(input.baseUV);
+    InputConfig config = GetInputConfig(input.positionCS_SS, input.baseUV);
     float4 base = GetBase(config);
 
-    #if defined(_CLIPPING)
-        clip(base.a - GetCutoff(config));
-    #endif
+#if defined(_CLIPPING)
+    clip(base.a - GetCutoff(config));
+#endif
 
     // 填充surface
     FragSurface surface;

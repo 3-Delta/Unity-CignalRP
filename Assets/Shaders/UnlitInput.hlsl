@@ -6,15 +6,18 @@ TEXTURE2D(_BaseMap);
 SAMPLER(sampler_BaseMap);
 
 UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
-UNITY_DEFINE_INSTANCED_PROP(float4, _BaseMap_ST)
-UNITY_DEFINE_INSTANCED_PROP(float4, _BaseColor)
-UNITY_DEFINE_INSTANCED_PROP(float, _Cutoff)
+    UNITY_DEFINE_INSTANCED_PROP(float4, _BaseMap_ST)
+    UNITY_DEFINE_INSTANCED_PROP(float4, _BaseColor)
+    UNITY_DEFINE_INSTANCED_PROP(float, _Cutoff)
 
-// 因为不受光,所以不需要
-// UNITY_DEFINE_INSTANCED_PROP(float, _Metallic)
-// UNITY_DEFINE_INSTANCED_PROP(float, _Smoothness)
+    // 因为不受光,所以不需要
+    // UNITY_DEFINE_INSTANCED_PROP(float, _Metallic)
+    // UNITY_DEFINE_INSTANCED_PROP(float, _Smoothness)
 
-UNITY_DEFINE_INSTANCED_PROP(float, _ZWrite)
+    UNITY_DEFINE_INSTANCED_PROP(float, _ZWrite)
+
+    UNITY_DEFINE_INSTANCED_PROP(float, _NearFadeDistance)
+    UNITY_DEFINE_INSTANCED_PROP(float, _NearFadeRange)
 UNITY_INSTANCING_BUFFER_END(UnityPerMaterial)
 
 struct InputConfig
@@ -24,15 +27,21 @@ struct InputConfig
 
     float3 flipBookUVB;
     bool useFlipBookBlend;
+
+    Fragment fragment;
+    bool nearFade;
 };
 
-InputConfig GetInputConfig(float2 baseUV)
+InputConfig GetInputConfig(float4 positionSS, float2 baseUV)
 {
     InputConfig c;
     c.baseUV = baseUV;
     c.color = 1.0;
     c.flipBookUVB = 0.0;
     c.useFlipBookBlend = false;
+
+    c.nearFade = false;
+    c.fragment = GetFragment(positionSS);
     return c;
 }
 
@@ -50,6 +59,13 @@ float4 GetBase(InputConfig input)
         float4 preTexelColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.flipBookUVB.xy);
         texelColor = lerp(texelColor, preTexelColor, input.flipBookUVB.z);
     }
+    
+    if(input.nearFade)
+    {
+        float nearAttenuation = (input.fragment.fragDepth - UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _NearFadeDistance)) / UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _NearFadeRange);
+        texelColor.a = saturate(nearAttenuation);
+    }
+    
     float4 color = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseColor);
     return texelColor * color * input.color;
 }

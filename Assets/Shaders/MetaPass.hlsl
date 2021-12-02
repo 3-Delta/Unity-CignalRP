@@ -22,7 +22,7 @@ struct Attributes
 
 struct Varyings
 {
-    float4 positionCS : SV_POSITION;
+    float4 positionCS_SS : SV_POSITION;
     float2 baseUV : VAR_BASE_UV;
 };
 
@@ -32,7 +32,7 @@ Varyings MetaVertex(Attributes input)
     input.positionOS.xy = input.lightmapUV * unity_LightmapST.xy + unity_LightmapST.zw;
     input.positionOS.z = input.positionOS.z > 0.0 ? FLT_MIN : 0.0;
     
-    output.positionCS = TransformWorldToHClip(input.positionOS);
+    output.positionCS_SS = TransformWorldToHClip(input.positionOS);
     output.baseUV = TransformBaseUV(input.baseUV);
     return output;
 }
@@ -40,7 +40,7 @@ Varyings MetaVertex(Attributes input)
 // 烘培到lightmap中
 float4 MetaFragment(Varyings input) : SV_TARGET
 {
-    InputConfig config = GetInputConfig(input.baseUV);
+    InputConfig config = GetInputConfig(input.positionCS_SS, input.baseUV);
     float4 base = GetBase(config);
 
     FragSurface surface;

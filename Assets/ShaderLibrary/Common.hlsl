@@ -19,6 +19,27 @@
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/UnityInstancing.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/SpaceTransforms.hlsl"
 
+bool IsOrthoCamera()
+{
+    return unity_OrthoParams.w;
+}
+
+// depth [0, 1],是到近平面的距离
+// 从到近平面的距离 转换为 到相机的距离
+float OrthoDepthBufferToLinear(float depth)
+{
+#if UNITY_REVERSED_Z
+    depth = 1.0 - depth;    
+#endif
+    float near = _ProjectionParams.y;
+    float far = _ProjectionParams.z;
+    return (far - near) * depth + _ProjectionParams.y;
+}
+
+SAMPLER(sampler_linear_clamp);
+SAMPLER(sampler_point_clamp);
+#include "Fragment.hlsl"
+
 float Square (float x) {
     return x * x;
 }

@@ -31,12 +31,15 @@ UNITY_INSTANCING_BUFFER_END(UnityPerMaterial)
 struct InputConfig
 {
     float2 baseUV;
+
+    Fragment fragment;
 };
 
-InputConfig GetInputConfig(float2 baseUV)
+InputConfig GetInputConfig(float4 positionSS, float2 baseUV)
 {
     InputConfig c;
     c.baseUV = baseUV;
+    c.fragment = GetFragment(positionSS);
     return c;
 }
 
