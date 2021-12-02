@@ -28,7 +28,13 @@ namespace CignalRP {
 
         private Lighting lighting = new Lighting();
 
-        public static readonly int FramebufferId = Shader.PropertyToID("_CameraFrameBuffer");
+        public static readonly int CameraColorAttachmentId = Shader.PropertyToID("_CameraColorAttachment");
+        public static readonly int CameraDepthAttachmentId = Shader.PropertyToID("_CameraDepthAttachment");
+
+        private bool useInterBuffer;
+        private bool useDepthTexture = false;
+        public static readonly int CameraDepthRTId = Shader.PropertyToID("_CameraDepthRT");
+        
         private PostProcessStack postProcessStack = new PostProcessStack();
         private PostProcessSettings postProcessSettings;
         private bool allowHDR;
@@ -46,6 +52,7 @@ namespace CignalRP {
             this.camera = camera;
             this.context = context;
             this.postProcessSettings = postProcessSettings;
+            this.useDepthTexture = true;
 
             if (camera.TryGetComponent(out cameraIni)) {
                 if (cameraIni.cameraSettings.rendererFrequency <= 0) {
@@ -162,9 +169,11 @@ namespace CignalRP {
                 }
 
                 RenderTextureFormat format = allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
-                this.cmdBuffer.GetTemporaryRT(FramebufferId, this.camera.pixelWidth, this.camera.pixelHeight, 32,
-                    FilterMode.Bilinear, format);
-                this.cmdBuffer.SetRenderTarget(FramebufferId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+                this.cmdBuffer.GetTemporaryRT(CameraColorAttachmentId, this.camera.pixelWidth, this.camera.pixelHeight, 32, FilterMode.Bilinear, format);
+                this.cmdBuffer.GetTemporaryRT(CameraDepthAttachmentId, this.camera.pixelWidth, this.camera.pixelHeight, 32, FilterMode.Point, RenderTextureFormat.Depth);
+                
+                this.cmdBuffer.SetRenderTarget(CameraColorAttachmentId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, 
+                    CameraDepthAttachmentId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             }
 
             bool clearDepth = flags <= CameraClearFlags.Depth;
@@ -180,7 +189,7 @@ namespace CignalRP {
             this.DrawGizmosBeforeFX();
 #endif
             if (this.postProcessStack.IsActive) {
-                this.postProcessStack.Render(FramebufferId);
+                this.postProcessStack.Render(CameraColorAttachmentId);
             }
 #if UNITY_EDITOR
             this.DrawGizmosAfterFX();
@@ -189,7 +198,12 @@ namespace CignalRP {
             this.lighting.Clean();
 
             if (this.postProcessStack.IsActive) {
-                this.cmdBuffer.ReleaseTemporaryRT(FramebufferId);
+                this.cmdBuffer.ReleaseTemporaryRT(CameraColorAttachmentId);
+                this.cmdBuffer.ReleaseTemporaryRT(CameraDepthAttachmentId);
+            }
+
+            if (useDepthTexture) {
+                this.cmdBuffer.ReleaseTemporaryRT(CameraDepthRTId);
             }
         }
         #endregion
@@ -216,6 +230,14 @@ namespace CignalRP {
         public static void ExecuteCmdBuffer(ref ScriptableRenderContext context, CommandBuffer cmdBuffer) {
             context.ExecuteCommandBuffer(cmdBuffer);
             cmdBuffer.Clear();
+        }
+
+        private void CopyAttachments() {
+            if (useDepthTexture) {
+                cmdBuffer.GetTemporaryRT(CameraDepthRTId, camera.pixelWidth, camera.pixelHeight, 32, FilterMode.Point, RenderTextureFormat.Depth);
+                cmdBuffer.CopyTexture(CameraDepthAttachmentId, CameraDepthRTId);
+                ExecuteCmdBuffer(ref context, cmdBuffer);
+            }
         }
 
         #region Draw
@@ -254,6 +276,8 @@ namespace CignalRP {
             // step2: 绘制天空盒
             // skybox和opaque进行ztest
             this.context.DrawSkybox(this.camera);
+
+            CopyAttachments();
 
             // step3: 绘制半透明物体
             sortingSettings.criteria = SortingCriteria.CommonTransparent;
