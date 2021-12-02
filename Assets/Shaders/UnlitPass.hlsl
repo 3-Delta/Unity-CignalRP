@@ -31,7 +31,13 @@ struct Attributes
 {
     float3 positionOS : POSITION;
     float4 color : COLOR;
-    float2 baseUV : TEXCOORD0;
+
+    #if defined(_FLIPBOOK_BLEND)
+        float4 baseUV : TEXCOORD0;
+        float flipBookBlendFactor: TEXCOORD1;
+    #else
+        float2 baseUV : TEXCOORD0;
+    #endif
 
     // 其实就是：uint instanceID; 这里是针对每个顶点做了和显存渲染数据的联系
     UNITY_VERTEX_INPUT_INSTANCE_ID
@@ -44,6 +50,10 @@ struct Varyings
     float4 color : VAR_COLOR;
 #endif
     float2 baseUV : VAR_BASE_UV;
+
+    #if defined(_FLIPBOOK_BLEND)
+    float3 flipBookUVB : VAR_FLIPBOOK;
+    #endif
     UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
@@ -65,7 +75,14 @@ Varyings UnlitPassVertex(Attributes input)
 #if defined(_VERTEX_COLOR)
     output.color = input.color;
 #endif
-    output.baseUV = TransformBaseUV(input.baseUV);
+    
+    output.baseUV = TransformBaseUV(input.baseUV.xy);
+#if defined(_VERTEX_COLOR)
+    output.flipBookUVB.xy = TransformBaseUV(input.baseUV.zw);
+    output.flipBookUVB.z = input.flipBookBlendFactor;
+#endif
+
+    
     return output;
 }
 
@@ -75,6 +92,14 @@ float4 UnlitPassFragment(Varyings input) : SV_Target
     // 类似于 arrayUnityPerMaterial[unity_InstanceID]._BaseColor
     // 根据一个vertex的static获取显存数据
     InputConfig config = GetInputConfig(input.baseUV);
+#if defined(_VERTEX_COLOR)
+    config.color = CRP_INPUT_INCLUDED.color;
+#endif
+#if defined(_FLIPBOOK_BLEND)
+    config.flipBookUVB = input.flipBookUVB;
+    config.useFlipBookBlend = true;
+#endif
+    
     float4 base = GetBase(config);
 
     #if defined(_CLIPPING)

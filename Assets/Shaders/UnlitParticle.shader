@@ -7,6 +7,10 @@
 		
 		_Cutoff ("Alpha Cutoff", Range(0.0, 1.0)) = 0.5
 		[Toggle(_CLIPPING)] _Clipping ("Alpha Clipping", Float) = 0
+    	
+    	// 顶点色
+    	[Toggle(_VERTEX_COLOR)] _VertexColor ("VertexColor", Float) = 0
+    	[Toggle(_FLIPBOOK_BLEND)] _FlipBookBlend ("FlipBookBlend", Float) = 0
         
         [Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend ("Src Blend", Float) = 1
 		[Enum(UnityEngine.Rendering.BlendMode)] _DstBlend ("Dst Blend", Float) = 0
@@ -27,6 +31,8 @@
 			
             HLSLPROGRAM
             #pragma shader_feature _CLIPPING
+            #pragma shader_feature _VERTEX_COLOR
+            #pragma shader_feature _FLIPBOOK_BLEND
             
             // 支持gpu instance, 会有宏INSTANCE_ON定义
             #pragma multi_compile_instancing

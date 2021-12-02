@@ -20,12 +20,19 @@ UNITY_INSTANCING_BUFFER_END(UnityPerMaterial)
 struct InputConfig
 {
     float2 baseUV;
+    float4 color;
+
+    float3 flipBookUVB;
+    bool useFlipBookBlend;
 };
 
 InputConfig GetInputConfig(float2 baseUV)
 {
     InputConfig c;
     c.baseUV = baseUV;
+    c.color = 1.0;
+    c.flipBookUVB = 0.0;
+    c.useFlipBookBlend = false;
     return c;
 }
 
@@ -38,8 +45,13 @@ float2 TransformBaseUV(float2 baseUV)
 float4 GetBase(InputConfig input)
 {
     float4 texelColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.baseUV);
+    if(input.useFlipBookBlend)
+    {
+        float4 preTexelColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.flipBookUVB.xy);
+        texelColor = lerp(texelColor, preTexelColor, input.flipBookUVB.z);
+    }
     float4 color = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseColor);
-    return texelColor * color;
+    return texelColor * color * input.color;
 }
 
 // 自发光选项
