@@ -1,6 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Assertions.Must;
 using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 
@@ -36,11 +37,16 @@ namespace CignalRP {
         public static readonly int sourceTextureId = Shader.PropertyToID("_SourceTexture");
 
         private static bool copyTextureSupported = SystemInfo.copyTextureSupport > CopyTextureSupport.None;
+        
         private bool useInterBuffer;
         private bool useColorTexture = false;
         private bool useDepthTexture = false;
         public static readonly int CameraColorRTId = Shader.PropertyToID("_CameraColorRT");
         public static readonly int CameraDepthRTId = Shader.PropertyToID("_CameraDepthRT");
+
+        private bool useRenderScale;
+        private Vector2Int renderSize;
+        public static readonly int renderSizeId = Shader.PropertyToID("_CameraRenderSize");
 
         private bool allowHDR;
         private PostProcessStack postProcessStack = new PostProcessStack();
@@ -92,6 +98,8 @@ namespace CignalRP {
                 useDepthTexture = cameraBufferSettings.copyDepth && cameraSettings.copyDepth;
             }
 
+            float renderScale = cameraBufferSettings.renderScale;
+            useRenderScale = renderScale <= 0.99f || renderScale > 1.01f;
 #if UNITY_EDITOR
             this.Prepare();
 #endif
@@ -111,6 +119,17 @@ namespace CignalRP {
                 this.allowHDR = false;
             }
 #endif
+            if (useRenderScale) {
+                renderSize.x = (int)(camera.pixelWidth * renderScale);
+                renderSize.y = (int)(camera.pixelHeight * renderScale);
+            }
+            else {
+                renderSize.x = camera.pixelWidth;
+                renderSize.y = camera.pixelHeight;
+            }
+            
+            cmdBuffer.SetGlobalVector(renderSizeId, new Vector4(1f / renderSize.x, 1f / renderSize.y, renderSize.x, renderSize.y));
+            ExecuteCmdBuffer(ref context, cmdBuffer);
 
             string cameraProfileName = "CRP|" + this.camera.name;
 #if UNITY_EDITOR
@@ -188,7 +207,7 @@ namespace CignalRP {
             //    Nothing = 4
             // }
             CameraClearFlags flags = this.camera.clearFlags;
-            useInterBuffer = useColorTexture | useDepthTexture | postProcessStack.IsActive;
+            useInterBuffer = useColorTexture || useDepthTexture || postProcessStack.IsActive || useRenderScale;
             if (useInterBuffer) {
                 // 后效开启时,在渲染每个camera的时候,都强制cleardepth,clearcolor
                 if (flags > CameraClearFlags.Color) {
@@ -196,8 +215,8 @@ namespace CignalRP {
                 }
 
                 RenderTextureFormat format = allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
-                this.cmdBuffer.GetTemporaryRT(CameraColorAttachmentId, this.camera.pixelWidth, this.camera.pixelHeight, 0, FilterMode.Bilinear, format);
-                this.cmdBuffer.GetTemporaryRT(CameraDepthAttachmentId, this.camera.pixelWidth, this.camera.pixelHeight, 32, FilterMode.Point, RenderTextureFormat.Depth);
+                this.cmdBuffer.GetTemporaryRT(CameraColorAttachmentId, renderSize.x, renderSize.y, 0, FilterMode.Bilinear, format);
+                this.cmdBuffer.GetTemporaryRT(CameraDepthAttachmentId, renderSize.x, renderSize.y, 32, FilterMode.Point, RenderTextureFormat.Depth);
 
                 this.cmdBuffer.SetRenderTarget(CameraColorAttachmentId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
                     CameraDepthAttachmentId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
@@ -283,7 +302,7 @@ namespace CignalRP {
 
         private void CopyAttachments() {
             if (useColorTexture) {
-                cmdBuffer.GetTemporaryRT(CameraColorRTId, camera.pixelWidth, camera.pixelHeight, 0, FilterMode.Bilinear, allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default);
+                cmdBuffer.GetTemporaryRT(CameraColorRTId, renderSize.x, renderSize.y, 0, FilterMode.Bilinear, allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default);
                 if (copyTextureSupported) {
                     cmdBuffer.CopyTexture(CameraColorAttachmentId, CameraColorRTId);
                 }
@@ -293,7 +312,7 @@ namespace CignalRP {
             }
 
             if (useDepthTexture) {
-                cmdBuffer.GetTemporaryRT(CameraDepthRTId, camera.pixelWidth, camera.pixelHeight, 32, FilterMode.Point, RenderTextureFormat.Depth);
+                cmdBuffer.GetTemporaryRT(CameraDepthRTId, renderSize.x, renderSize.y, 32, FilterMode.Point, RenderTextureFormat.Depth);
                 if (copyTextureSupported) {
                     cmdBuffer.CopyTexture(CameraDepthAttachmentId, CameraDepthRTId);
                 }

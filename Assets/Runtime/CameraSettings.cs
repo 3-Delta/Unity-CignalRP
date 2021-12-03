@@ -2,6 +2,7 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Serialization;
+using UnityEngine.SocialPlatforms;
 
 namespace CignalRP {
     [Serializable]
@@ -40,5 +41,7 @@ namespace CignalRP {
         
         public bool copyDepth;
         public bool copyDepthReflection;
+
+        [Range(0.1f, 2f)] public float renderScale;
     }
 }

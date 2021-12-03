@@ -6,6 +6,8 @@
 TEXTURE2D(_CameraColorRT);
 TEXTURE2D(_CameraDepthRT);
 
+float4 _CameraRenderSize;
+
 struct Fragment
 {
     float2 positionSS; // 屏幕空间位置,uv整体在左下角做了(0.5, 0.5)的平移
@@ -22,7 +24,7 @@ Fragment GetFragment(float4 positionSS)
     // 正交矩阵的w永远为1，不能正确表达depth, 透视的w则是-z
     fg.zToCamera = IsOrthoCamera() ? OrthoDepthBufferToLinear(positionSS.z) : positionSS.w;
 
-    fg.scerrnUV = fg.positionSS / _ScreenParams.xy;
+    fg.scerrnUV = fg.positionSS / _CameraRenderSize.xy;
     
     float zToNear = SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthRT, sampler_point_clamp, fg.scerrnUV, 0);
     fg.zBuffer = IsOrthoCamera() ? OrthoDepthBufferToLinear(zToNear) : LinearEyeDepth(zToNear, _ZBufferParams);

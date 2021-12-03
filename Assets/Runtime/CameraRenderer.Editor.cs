@@ -68,6 +68,8 @@ namespace CignalRP {
             // 不被渲染的情况下，我们在editor下依然可以进行编辑操作，也就是recttransform.sizeDelta改变之后，边框gizmos会变化
             if (this.camera.cameraType == CameraType.SceneView) {
                 ScriptableRenderContext.EmitWorldGeometryForSceneView(camera);
+                // scene禁用scale
+                useRenderScale = false;
             }
         }
 
