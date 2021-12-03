@@ -43,8 +43,12 @@ MonoBehaviour:
   useSRPBatcher: 1
   usePerObjectLights: 1
   shadowSettings: {fileID: -7423295556669773517}
+  cameraBufferSettings:
+    allowHDR: 1
+    copyDepth: 0
+    copyDepthReflection: 0
   postProcessSettings: {fileID: 5314368177112552238}
-  allowHDR: 0
+  cameraRenderShader: {fileID: 4800000, guid: 3a9ce19251df9364ebda1e4605142d23, type: 3}
 --- !u!114 &5314368177112552238
 MonoBehaviour:
   m_ObjectHideFlags: 0

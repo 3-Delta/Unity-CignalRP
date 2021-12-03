@@ -61,7 +61,7 @@ Varyings DefaultVertex(uint vertexID : SV_VertexID)
     return output;
 }
 
-float4 CopyFragment(Varyings input) : SV_TARGET
+float4 CopyColorFragment(Varyings input) : SV_TARGET
 {
     return GetSource1(input.screenUV);
 }

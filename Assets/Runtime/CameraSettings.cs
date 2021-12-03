@@ -15,6 +15,9 @@ namespace CignalRP {
 
         [Header("相机渲染帧率")] public int rendererFrequency = -1;
 
+        public bool copyColor = true;
+        public bool copyDepth = true;
+
         [Header("后处理")] public bool enablePostProcess = true;
         public bool overridePostProcess = false;
         public PostProcessSettings postProcessSettings;
@@ -26,5 +29,16 @@ namespace CignalRP {
 
         [Header("相机layermask是否影响光源")] public bool toMaskLights = false;
         [RenderingLayerMaskField] public int cameraLayerMask = -1; // 默认everything
+    }
+
+    [Serializable]
+    public struct CameraBufferSettings {
+        public bool allowHDR;
+
+        public bool copyColor;
+        public bool copyColorReflection;
+        
+        public bool copyDepth;
+        public bool copyDepthReflection;
     }
 }

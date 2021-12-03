@@ -31,13 +31,20 @@ namespace CignalRP {
         public static readonly int CameraColorAttachmentId = Shader.PropertyToID("_CameraColorAttachment");
         public static readonly int CameraDepthAttachmentId = Shader.PropertyToID("_CameraDepthAttachment");
 
+        private Material material;
+        private Texture2D missingTexture; // 有时候depthRT不需要，但是流程会使用到，所以给个默认的
+        public static readonly int sourceTextureId = Shader.PropertyToID("_SourceTexture");
+
+        private static bool copyTextureSupported = SystemInfo.copyTextureSupport > CopyTextureSupport.None;
         private bool useInterBuffer;
+        private bool useColorTexture = false;
         private bool useDepthTexture = false;
+        public static readonly int CameraColorRTId = Shader.PropertyToID("_CameraColorRT");
         public static readonly int CameraDepthRTId = Shader.PropertyToID("_CameraDepthRT");
-        
+
+        private bool allowHDR;
         private PostProcessStack postProcessStack = new PostProcessStack();
         private PostProcessSettings postProcessSettings;
-        private bool allowHDR;
 
         // https://www.pianshen.com/article/7860291589/
         // Shader中不写 LightMode 时默认ShaderTagId值为“SRPDefaultUnlit”
@@ -47,12 +54,22 @@ namespace CignalRP {
         private static readonly ShaderTagId UnlitShaderTagId = new ShaderTagId("SRPDefaultUnlit");
         private static readonly ShaderTagId LitShaderTagId = new ShaderTagId("CRPLit");
 
+        public CameraRenderer(Shader shader) {
+            material = CoreUtils.CreateEngineMaterial(shader);
+
+            missingTexture = new Texture2D(1, 1) {
+                hideFlags = HideFlags.HideAndDontSave,
+                name = "Missing",
+            };
+            missingTexture.SetPixel(0, 0, Color.white * 0.5f);
+            missingTexture.Apply(true, true);
+        }
+
         public void Render(ref ScriptableRenderContext context, Camera camera, bool useDynamicBatching, bool useGPUInstancing,
-            ShadowSettings shadowSettings, PostProcessSettings postProcessSettings, bool useHDR, bool usePerObjectLights) {
+            ShadowSettings shadowSettings, PostProcessSettings postProcessSettings, CameraBufferSettings cameraBufferSettings, bool usePerObjectLights) {
             this.camera = camera;
             this.context = context;
             this.postProcessSettings = postProcessSettings;
-            this.useDepthTexture = true;
 
             if (camera.TryGetComponent(out cameraIni)) {
                 if (cameraIni.cameraSettings.rendererFrequency <= 0) {
@@ -66,6 +83,15 @@ namespace CignalRP {
                 }
             }
 
+            if (camera.cameraType == CameraType.Reflection) {
+                useColorTexture = cameraBufferSettings.copyColorReflection;
+                useDepthTexture = cameraBufferSettings.copyDepthReflection;
+            }
+            else {
+                useColorTexture = cameraBufferSettings.copyColor && cameraSettings.copyColor;
+                useDepthTexture = cameraBufferSettings.copyDepth && cameraSettings.copyDepth;
+            }
+
 #if UNITY_EDITOR
             this.Prepare();
 #endif
@@ -75,11 +101,11 @@ namespace CignalRP {
             }
 
             if (camera.cameraType == CameraType.Game) {
-                this.allowHDR = useHDR && camera.allowHDR;
+                this.allowHDR = cameraBufferSettings.allowHDR && camera.allowHDR;
             }
 #if UNITY_EDITOR
             else if (camera.cameraType == CameraType.SceneView) {
-                this.allowHDR = useHDR && SceneView.currentDrawingSceneView.sceneViewState.showImageEffects;
+                this.allowHDR = cameraBufferSettings.allowHDR && SceneView.currentDrawingSceneView.sceneViewState.showImageEffects;
             }
             else {
                 this.allowHDR = false;
@@ -162,17 +188,18 @@ namespace CignalRP {
             //    Nothing = 4
             // }
             CameraClearFlags flags = this.camera.clearFlags;
-            if (this.postProcessStack.IsActive) {
+            useInterBuffer = useColorTexture | useDepthTexture | postProcessStack.IsActive;
+            if (useInterBuffer) {
                 // 后效开启时,在渲染每个camera的时候,都强制cleardepth,clearcolor
                 if (flags > CameraClearFlags.Color) {
                     flags = CameraClearFlags.Color;
                 }
 
                 RenderTextureFormat format = allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
-                this.cmdBuffer.GetTemporaryRT(CameraColorAttachmentId, this.camera.pixelWidth, this.camera.pixelHeight, 32, FilterMode.Bilinear, format);
+                this.cmdBuffer.GetTemporaryRT(CameraColorAttachmentId, this.camera.pixelWidth, this.camera.pixelHeight, 0, FilterMode.Bilinear, format);
                 this.cmdBuffer.GetTemporaryRT(CameraDepthAttachmentId, this.camera.pixelWidth, this.camera.pixelHeight, 32, FilterMode.Point, RenderTextureFormat.Depth);
-                
-                this.cmdBuffer.SetRenderTarget(CameraColorAttachmentId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, 
+
+                this.cmdBuffer.SetRenderTarget(CameraColorAttachmentId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
                     CameraDepthAttachmentId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             }
 
@@ -182,6 +209,10 @@ namespace CignalRP {
             // 为了Profiler以及Framedebugger中捕获
             // ClearRendererTarget会自动收缩在CmdBufferName下面
             this.cmdBuffer.ClearRenderTarget(clearDepth, clearColor, bgColor);
+
+            cmdBuffer.SetGlobalTexture(CameraDepthRTId, missingTexture);
+            cmdBuffer.SetGlobalTexture(CameraColorRTId, missingTexture);
+            ExecuteCmdBuffer(ref context, cmdBuffer);
         }
 
         private void PostDraw() {
@@ -191,15 +222,23 @@ namespace CignalRP {
             if (this.postProcessStack.IsActive) {
                 this.postProcessStack.Render(CameraColorAttachmentId);
             }
+            else if (useInterBuffer) {
+                DrawFrameBuffer(CameraColorAttachmentId, BuiltinRenderTextureType.CameraTarget);
+                ExecuteCmdBuffer(ref context, cmdBuffer);
+            }
 #if UNITY_EDITOR
             this.DrawGizmosAfterFX();
 #endif
 
             this.lighting.Clean();
 
-            if (this.postProcessStack.IsActive) {
+            if (useInterBuffer) {
                 this.cmdBuffer.ReleaseTemporaryRT(CameraColorAttachmentId);
                 this.cmdBuffer.ReleaseTemporaryRT(CameraDepthAttachmentId);
+            }
+
+            if (useColorTexture) {
+                this.cmdBuffer.ReleaseTemporaryRT(CameraColorRTId);
             }
 
             if (useDepthTexture) {
@@ -208,9 +247,19 @@ namespace CignalRP {
         }
         #endregion
 
+        public void Dispose() {
+            CoreUtils.Destroy(material);
+            CoreUtils.Destroy(missingTexture);
+        }
+
         public enum EProfileStep {
             Begin,
             End,
+        }
+
+        public enum ECopyET {
+            CopyColor = 0,
+            CopyDepth = 1,
         }
 
         // 内联优化
@@ -233,11 +282,40 @@ namespace CignalRP {
         }
 
         private void CopyAttachments() {
+            if (useColorTexture) {
+                cmdBuffer.GetTemporaryRT(CameraColorRTId, camera.pixelWidth, camera.pixelHeight, 0, FilterMode.Bilinear, allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default);
+                if (copyTextureSupported) {
+                    cmdBuffer.CopyTexture(CameraColorAttachmentId, CameraColorRTId);
+                }
+                else {
+                    DrawFrameBuffer(CameraColorAttachmentId, CameraColorRTId);
+                }
+            }
+
             if (useDepthTexture) {
                 cmdBuffer.GetTemporaryRT(CameraDepthRTId, camera.pixelWidth, camera.pixelHeight, 32, FilterMode.Point, RenderTextureFormat.Depth);
-                cmdBuffer.CopyTexture(CameraDepthAttachmentId, CameraDepthRTId);
-                ExecuteCmdBuffer(ref context, cmdBuffer);
+                if (copyTextureSupported) {
+                    cmdBuffer.CopyTexture(CameraDepthAttachmentId, CameraDepthRTId);
+                }
+                else {
+                    DrawFrameBuffer(CameraDepthAttachmentId, CameraDepthRTId, true);
+                }
             }
+
+            if (!copyTextureSupported) {
+                // 渲染目标设置为原来的
+                this.cmdBuffer.SetRenderTarget(CameraColorAttachmentId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
+                    CameraDepthAttachmentId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+            }
+
+            ExecuteCmdBuffer(ref context, cmdBuffer);
+        }
+
+        private void DrawFrameBuffer(RenderTargetIdentifier from, RenderTargetIdentifier to, bool isDepth = false) {
+            cmdBuffer.SetGlobalTexture(sourceTextureId, from);
+            cmdBuffer.SetRenderTarget(to, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+            int passIndex = isDepth ? (int) ECopyET.CopyDepth : (int) ECopyET.CopyColor;
+            cmdBuffer.DrawProcedural(Matrix4x4.identity, material, passIndex, MeshTopology.Triangles, 3);
         }
 
         #region Draw
@@ -270,14 +348,16 @@ namespace CignalRP {
             // 渲染CRP光照的pass
             drawingSettings.SetShaderPassName(1, LitShaderTagId);
 
-            var filteringSetttings = new FilteringSettings(RenderQueueRange.opaque, camera.cullingMask, (uint)cameraRenderingLayerMask);
+            var filteringSetttings = new FilteringSettings(RenderQueueRange.opaque, camera.cullingMask, (uint) cameraRenderingLayerMask);
             this.context.DrawRenderers(this.cullingResults, ref drawingSettings, ref filteringSetttings);
 
             // step2: 绘制天空盒
             // skybox和opaque进行ztest
             this.context.DrawSkybox(this.camera);
 
-            CopyAttachments();
+            if (useColorTexture || useDepthTexture) {
+                CopyAttachments();
+            }
 
             // step3: 绘制半透明物体
             sortingSettings.criteria = SortingCriteria.CommonTransparent;

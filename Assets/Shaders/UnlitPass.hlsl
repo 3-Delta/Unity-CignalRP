@@ -100,8 +100,12 @@ float4 UnlitPassFragment(Varyings input) : SV_Target
     config.useFlipBookBlend = true;
 #endif
 
-#if defined(_FLIPBOOK_BLEND)
+#if defined(_NEAR_FADE)
     config.nearFade = true;
+#endif
+
+#if defined(_SOFT_PARTICLES)
+    config.softParticles = true;
 #endif
     
     float4 base = GetBase(config);
@@ -110,6 +114,13 @@ float4 UnlitPassFragment(Varyings input) : SV_Target
     clip(base.a - GetCutoff(config));
 #endif
 
+#if defined(_DISTORTION)
+    float2 distortion = GetDistortion(config) * base.a;
+    float3 bufferColor = GetBufferColor(config.fragment, distortion).rgb;
+    float rate = saturate(base.a - GetDistortionBlend(config));
+    base.rgb = lerp(bufferColor, base.rgb, rate);
+#endif
+    
     return float4(base.rgb, GetFinalAlpha(base.a));
 }
 

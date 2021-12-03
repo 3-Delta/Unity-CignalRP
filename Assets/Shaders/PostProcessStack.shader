@@ -107,7 +107,7 @@
 			HLSLPROGRAM
 				#pragma target 3.5
 				#pragma vertex DefaultVertex
-	            #pragma fragment CopyFragment
+	            #pragma fragment CopyColorFragment
 			ENDHLSL
         }
     }

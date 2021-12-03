@@ -51,8 +51,10 @@ CBUFFER_START(UnityPerDraw)
 	float4 unity_RenderingLayer;
 
 	float4 _ProjectionParams;
-	// 正交相机信息,如果是正交消极，w为1，否则0
+	// 正交相机信息,如果是正交相机，w为1，否则0
 	float4 unity_OrthoParams;
+	float4 _ScreenParams; // xy是宽高
+	float4 _ZBufferParams;
 CBUFFER_END
 
 float4x4 unity_MatrixV;	// v

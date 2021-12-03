@@ -18,6 +18,7 @@
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/UnityInstancing.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/SpaceTransforms.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Packing.hlsl"
 
 bool IsOrthoCamera()
 {
@@ -29,7 +30,7 @@ bool IsOrthoCamera()
 float OrthoDepthBufferToLinear(float depth)
 {
 #if UNITY_REVERSED_Z
-    depth = 1.0 - depth;    
+    depth = 1.0 - depth; //从 [-1， 1] -> [0, 1]
 #endif
     float near = _ProjectionParams.y;
     float far = _ProjectionParams.z;
@@ -38,6 +39,7 @@ float OrthoDepthBufferToLinear(float depth)
 
 SAMPLER(sampler_linear_clamp);
 SAMPLER(sampler_point_clamp);
+SAMPLER(sampler_CameraColorRT);
 #include "Fragment.hlsl"
 
 float Square (float x) {
@@ -47,6 +49,14 @@ float Square (float x) {
 float DistanceSquare (float3 x, float3 y) {
     float3 diff = x - y;
     return dot(diff, diff);
+}
+
+float3 DecodeNormal (float4 sample, float scale) {
+    #if defined(UNITY_NO_DXT5nm)
+    return UnpackNormalRGB(sample, scale);
+    #else
+    return UnpackNormalmapRGorAG(sample, scale);
+    #endif
 }
 
 #endif

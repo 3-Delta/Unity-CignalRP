@@ -5,6 +5,9 @@
 TEXTURE2D(_BaseMap);
 SAMPLER(sampler_BaseMap);
 
+TEXTURE2D(_DistortionTexture);
+SAMPLER(sampler_DistortionTexture);
+
 UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
     UNITY_DEFINE_INSTANCED_PROP(float4, _BaseMap_ST)
     UNITY_DEFINE_INSTANCED_PROP(float4, _BaseColor)
@@ -18,7 +21,14 @@ UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
 
     UNITY_DEFINE_INSTANCED_PROP(float, _NearFadeDistance)
     UNITY_DEFINE_INSTANCED_PROP(float, _NearFadeRange)
+    UNITY_DEFINE_INSTANCED_PROP(float, _SoftParticlesDistance)
+    UNITY_DEFINE_INSTANCED_PROP(float, _SoftParticlesRange)
+
+    UNITY_DEFINE_INSTANCED_PROP(float, _DistortionStrength)
+    UNITY_DEFINE_INSTANCED_PROP(float, _DistortionBlend)
 UNITY_INSTANCING_BUFFER_END(UnityPerMaterial)
+
+#define GetInputProp(name) UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, name)
 
 struct InputConfig
 {
@@ -30,6 +40,7 @@ struct InputConfig
 
     Fragment fragment;
     bool nearFade;
+    bool softParticles;
 };
 
 InputConfig GetInputConfig(float4 positionSS, float2 baseUV)
@@ -41,13 +52,14 @@ InputConfig GetInputConfig(float4 positionSS, float2 baseUV)
     c.useFlipBookBlend = false;
 
     c.nearFade = false;
+    c.softParticles = false;
     c.fragment = GetFragment(positionSS);
     return c;
 }
 
 float2 TransformBaseUV(float2 baseUV)
 {
-    float4 baseST = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseMap_ST);
+    float4 baseST = GetInputProp(_BaseMap_ST);
     return baseUV * baseST.xy + baseST.zw;
 }
 
@@ -62,11 +74,18 @@ float4 GetBase(InputConfig input)
     
     if(input.nearFade)
     {
-        float nearAttenuation = (input.fragment.fragDepth - UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _NearFadeDistance)) / UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _NearFadeRange);
+        float nearAttenuation = (input.fragment.zToCamera - GetInputProp(_NearFadeDistance)) / GetInputProp(_NearFadeRange);
+        texelColor.a = saturate(nearAttenuation);
+    }
+
+    if(input.softParticles)
+    {
+        float depthDelta = input.fragment.zBuffer - input.fragment.zToCamera;
+        float nearAttenuation = (depthDelta - GetInputProp(_SoftParticlesDistance)) / GetInputProp(_SoftParticlesRange);
         texelColor.a = saturate(nearAttenuation);
     }
     
-    float4 color = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseColor);
+    float4 color = GetInputProp(_BaseColor);
     return texelColor * color * input.color;
 }
 
@@ -78,7 +97,7 @@ float3 GetEmission(InputConfig input)
 
 float GetCutoff(InputConfig input)
 {
-    return UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff);
+    return GetInputProp(_Cutoff);
 }
 
 float GetMetallic(InputConfig input)
@@ -91,9 +110,29 @@ float GetSmoothness(InputConfig input)
     return 0.0;
 }
 
+float GetFresnel(InputConfig c) {
+    return 0.0;
+}
+
+float2 GetDistortion(InputConfig input)
+{
+    float4 texelColor = SAMPLE_TEXTURE2D(_DistortionTexture, sampler_DistortionTexture, input.baseUV);
+    if(input.useFlipBookBlend)
+    {
+        float4 preTexelColor = SAMPLE_TEXTURE2D(_DistortionTexture, sampler_BaseMap, input.flipBookUVB.xy);
+        texelColor = lerp(texelColor, preTexelColor, input.flipBookUVB.z);
+    }
+    return DecodeNormal(texelColor, GetInputProp(_DistortionStrength)).xy;
+}
+
+float GetDistortionBlend(InputConfig input)
+{
+    return GetInputProp(_DistortionBlend);
+}
+
 float GetFinalAlpha(float alpha)
 {
-    return UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _ZWrite) ? 1.0 : alpha;
+    return GetInputProp(_ZWrite) ? 1.0 : alpha;
 }
 
 #endif
