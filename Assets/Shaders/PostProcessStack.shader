@@ -110,5 +110,16 @@
 	            #pragma fragment CopyColorFragment
 			ENDHLSL
         }
+        Pass
+        {
+			Name "FinalScale"
+            Blend [_FinalSrcBlend] [_FinalDestBlend]
+			
+			HLSLPROGRAM
+				#pragma target 3.5			
+				#pragma vertex DefaultVertex
+	            #pragma fragment FinalScaleFragment
+			ENDHLSL
+        }
     }
 }

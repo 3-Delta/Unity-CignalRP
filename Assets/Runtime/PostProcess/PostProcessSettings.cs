@@ -16,6 +16,8 @@ namespace CignalRP {
             [Min(1f)] public int downscaleLimit;
             public bool bloomBicubicUpsampling;
             [Min(0f)] public float intensity;
+
+            public bool ignoreRenderScale;
         }
 
         [Serializable]

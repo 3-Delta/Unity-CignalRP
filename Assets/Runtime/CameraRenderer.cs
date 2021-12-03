@@ -98,7 +98,7 @@ namespace CignalRP {
                 useDepthTexture = cameraBufferSettings.copyDepth && cameraSettings.copyDepth;
             }
 
-            float renderScale = cameraBufferSettings.renderScale;
+            float renderScale = cameraSettings.GetRenderScale(cameraBufferSettings.renderScale);
             useRenderScale = renderScale <= 0.99f || renderScale > 1.01f;
 #if UNITY_EDITOR
             this.Prepare();
@@ -120,6 +120,7 @@ namespace CignalRP {
             }
 #endif
             if (useRenderScale) {
+                renderScale = Mathf.Clamp(renderScale, 0.1f, 2f);
                 renderSize.x = (int)(camera.pixelWidth * renderScale);
                 renderSize.y = (int)(camera.pixelHeight * renderScale);
             }
@@ -140,7 +141,7 @@ namespace CignalRP {
             ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, cameraProfileName);
 
             #region 绘制Shadow
-            this.PreDraw(shadowSettings, usePerObjectLights);
+            this.PreDraw(shadowSettings, usePerObjectLights, cameraBufferSettings);
             #endregion
 
             #region 绘制Camera常规内容
@@ -186,11 +187,11 @@ namespace CignalRP {
         #endregion
 
         #region Pre/Post Draw
-        private void PreDraw(ShadowSettings shadowSettings, bool usePerObjectLights) {
+        private void PreDraw(ShadowSettings shadowSettings, bool usePerObjectLights, CameraBufferSettings cameraBufferSettings) {
             // 设置光源,阴影信息, 内含shadowmap的渲染， 所以需要在正式的相机参数等之前先渲染， 否则放在函数最尾巴，则渲染为一片黑色
             this.lighting.Setup(ref this.context, ref this.cullingResults, shadowSettings, usePerObjectLights,
                 cameraSettings.toMaskLights ? cameraSettings.cameraLayerMask : -1);
-            this.postProcessStack.Setup(ref this.context, this.camera, this.postProcessSettings, allowHDR);
+            this.postProcessStack.Setup(ref this.context, this.camera, renderSize, this.postProcessSettings, allowHDR, cameraBufferSettings.bicubicRescaleMode);
 
             // 设置vp矩阵给shader的unity_MatrixVP属性，在Framedebugger中选中某个dc可看
             // vp由CPU构造

@@ -317,4 +317,18 @@ float4 FinalFragment(Varyings input) : SV_TARGET
     return color;
 }
 
+bool _UseBicubicRescale;
+
+float4 FinalScaleFragment(Varyings input) : SV_TARGET
+{
+    if(_UseBicubicRescale)
+    {
+        return GetSource1Bicubic(input.screenUV);
+    }
+    else
+    {
+        return GetSource1(input.screenUV);
+    }
+}
+
 #endif

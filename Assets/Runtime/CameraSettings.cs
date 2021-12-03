@@ -30,6 +30,27 @@ namespace CignalRP {
 
         [Header("相机layermask是否影响光源")] public bool toMaskLights = false;
         [RenderingLayerMaskField] public int cameraLayerMask = -1; // 默认everything
+
+        public enum ERenderScaleMode {
+            Inherit, // 继承管线
+            Multiply, // 相乘
+            Override,
+        }
+
+        public ERenderScaleMode renderScaleMode = ERenderScaleMode.Inherit;
+        [Range(0.1f, 2f)] public float renderScale = 1f;
+
+        public float GetRenderScale(float scale) {
+            if (renderScaleMode == ERenderScaleMode.Inherit) {
+                return scale;
+            }
+            else if (renderScaleMode == ERenderScaleMode.Override) {
+                return renderScale;
+            }
+            else {
+                return renderScale * scale;
+            }
+        }
     }
 
     [Serializable]
@@ -43,5 +64,12 @@ namespace CignalRP {
         public bool copyDepthReflection;
 
         [Range(0.1f, 2f)] public float renderScale;
+        public enum EBicubicRescaleMode {
+            Off, 
+            UpOnly, 
+            UpAndDown,
+        }
+
+        public EBicubicRescaleMode bicubicRescaleMode;
     }
 }
