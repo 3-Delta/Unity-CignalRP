@@ -15,10 +15,7 @@ namespace CignalRP {
         }
 
         [Header("相机渲染帧率")] public int rendererFrequency = -1;
-
-        public bool copyColor = true;
-        public bool copyDepth = true;
-
+        
         [Header("后处理")] public bool enablePostProcess = true;
         public bool overridePostProcess = false;
         public PostProcessSettings postProcessSettings;
@@ -37,6 +34,11 @@ namespace CignalRP {
             Override,
         }
 
+        [Header("Color/Depth")]
+        public bool copyColor = false;
+        public bool copyDepth = false;
+        
+        [Header("RenderScale")]
         public ERenderScaleMode renderScaleMode = ERenderScaleMode.Inherit;
         [Range(0.1f, 2f)] public float renderScale = 1f;
 
