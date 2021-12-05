@@ -33,12 +33,12 @@ namespace CignalRP {
         public static readonly int CameraDepthAttachmentId = Shader.PropertyToID("_CameraDepthAttachment");
 
         private Material material;
-        private Texture2D missingTexture; // 有时候depthRT不需要，但是流程会使用到，所以给个默认的
+        private Texture2D missingRT; // 有时候depthRT不需要，但是流程会使用到，所以给个默认的
         public static readonly int sourceTextureId = Shader.PropertyToID("_SourceTexture");
 
         private static bool copyTextureSupported = SystemInfo.copyTextureSupport > CopyTextureSupport.None;
-        
-        private bool useInterBuffer;
+
+        private bool useInterBuffer = false;
         private bool useColorTexture = false;
         private bool useDepthTexture = false;
         public static readonly int CameraColorRTId = Shader.PropertyToID("_CameraColorRT");
@@ -47,6 +47,9 @@ namespace CignalRP {
         private bool useRenderScale;
         private Vector2Int renderSize;
         public static readonly int renderSizeId = Shader.PropertyToID("_CameraRenderSize");
+        
+        public static readonly int finalSrcBlendId = Shader.PropertyToID("_FinalSrcBlend");
+        public static readonly int finalDestBlendId = Shader.PropertyToID("_FinalDestBlend");
 
         private bool allowHDR;
         private PostProcessStack postProcessStack = new PostProcessStack();
@@ -63,12 +66,12 @@ namespace CignalRP {
         public CameraRenderer(Shader shader) {
             material = CoreUtils.CreateEngineMaterial(shader);
 
-            missingTexture = new Texture2D(1, 1) {
-                hideFlags = HideFlags.HideAndDontSave,
-                name = "Missing",
+            missingRT = new Texture2D(1, 1) {
+                hideFlags = HideFlags.DontSave,
+                name = "MissingRT",
             };
-            missingTexture.SetPixel(0, 0, Color.white * 0.5f);
-            missingTexture.Apply(true, true);
+            missingRT.SetPixel(0, 0, Color.white * 0.5f);
+            missingRT.Apply(true, true);
         }
 
         public void Render(ref ScriptableRenderContext context, Camera camera, bool useDynamicBatching, bool useGPUInstancing,
@@ -186,7 +189,7 @@ namespace CignalRP {
         }
         #endregion
 
-        #region Pre/Post Draw
+        #region Pre/Post/Draw
         private void PreDraw(ShadowSettings shadowSettings, bool usePerObjectLights, CameraBufferSettings cameraBufferSettings) {
             // 设置光源,阴影信息, 内含shadowmap的渲染， 所以需要在正式的相机参数等之前先渲染， 否则放在函数最尾巴，则渲染为一片黑色
             this.lighting.Setup(ref this.context, ref this.cullingResults, shadowSettings, usePerObjectLights,
@@ -208,7 +211,7 @@ namespace CignalRP {
             //    Nothing = 4
             // }
             CameraClearFlags flags = this.camera.clearFlags;
-            useInterBuffer = useColorTexture || useDepthTexture || postProcessStack.IsActive || useRenderScale;
+            useInterBuffer = useColorTexture || useDepthTexture || useRenderScale || postProcessStack.IsActive;
             if (useInterBuffer) {
                 // 后效开启时,在渲染每个camera的时候,都强制cleardepth,clearcolor
                 if (flags > CameraClearFlags.Color) {
@@ -219,8 +222,13 @@ namespace CignalRP {
                 this.cmdBuffer.GetTemporaryRT(CameraColorAttachmentId, renderSize.x, renderSize.y, 0, FilterMode.Bilinear, format);
                 this.cmdBuffer.GetTemporaryRT(CameraDepthAttachmentId, renderSize.x, renderSize.y, 32, FilterMode.Point, RenderTextureFormat.Depth);
 
+                // 设置之后，zwite on的ztest pass物体就会写入CameraDepthAttachmentId
                 this.cmdBuffer.SetRenderTarget(CameraColorAttachmentId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
                     CameraDepthAttachmentId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+            }
+            else {
+                // 否则直接写入framebuffer
+                // 即 BuiltinRenderTextureType.CameraTarget
             }
 
             bool clearDepth = flags <= CameraClearFlags.Depth;
@@ -230,8 +238,8 @@ namespace CignalRP {
             // ClearRendererTarget会自动收缩在CmdBufferName下面
             this.cmdBuffer.ClearRenderTarget(clearDepth, clearColor, bgColor);
 
-            cmdBuffer.SetGlobalTexture(CameraDepthRTId, missingTexture);
-            cmdBuffer.SetGlobalTexture(CameraColorRTId, missingTexture);
+            cmdBuffer.SetGlobalTexture(CameraColorRTId, missingRT);
+            cmdBuffer.SetGlobalTexture(CameraDepthRTId, missingRT);
             ExecuteCmdBuffer(ref context, cmdBuffer);
         }
 
@@ -243,7 +251,8 @@ namespace CignalRP {
                 this.postProcessStack.Render(CameraColorAttachmentId);
             }
             else if (useInterBuffer) {
-                DrawFrameBuffer(CameraColorAttachmentId, BuiltinRenderTextureType.CameraTarget);
+                // blend在后处理不启用的时候，也生效
+                DrawBlendFinal(cameraSettings.finalBlendMode);
                 ExecuteCmdBuffer(ref context, cmdBuffer);
             }
 #if UNITY_EDITOR
@@ -255,21 +264,77 @@ namespace CignalRP {
             if (useInterBuffer) {
                 this.cmdBuffer.ReleaseTemporaryRT(CameraColorAttachmentId);
                 this.cmdBuffer.ReleaseTemporaryRT(CameraDepthAttachmentId);
+                
+                // CopyAttachments有可能申请
+                if (useColorTexture) {
+                    this.cmdBuffer.ReleaseTemporaryRT(CameraColorRTId);
+                }
+
+                if (useDepthTexture) {
+                    this.cmdBuffer.ReleaseTemporaryRT(CameraDepthRTId);
+                }
+            }
+        }
+        
+        private void Draw(bool useDynamicBatching, bool useGPUInstancing, bool usePerObjectLights,
+            int cameraRenderingLayerMask) {
+            PerObjectData lightPerObjectFlags = PerObjectData.None;
+            if (usePerObjectLights) {
+                // 每个对象收到几个哪几个光源的影响?
+                lightPerObjectFlags = PerObjectData.LightData | PerObjectData.LightIndices;
             }
 
-            if (useColorTexture) {
-                this.cmdBuffer.ReleaseTemporaryRT(CameraColorRTId);
+            // step1: 绘制不透明物体
+            var sortingSettings = new SortingSettings() {
+                // todo 设置lightmode的pass以及物体排序规则， 是否可以利用GPU的hsr规避这里的排序？？？
+                criteria = SortingCriteria.CommonOpaque
+            };
+            var drawingSettings = new DrawingSettings(UnlitShaderTagId, sortingSettings) {
+                enableDynamicBatching = useDynamicBatching,
+                enableInstancing = useGPUInstancing,
+                // 传递obj在lightmap中的uv
+                perObjectData = PerObjectData.Lightmaps |
+                                PerObjectData.LightProbe |
+                                PerObjectData.LightProbeProxyVolume | // lppv
+                                
+                                PerObjectData.ShadowMask |
+                                PerObjectData.OcclusionProbe |
+                                PerObjectData.OcclusionProbeProxyVolume |
+                                
+                                PerObjectData.ReflectionProbes |
+                                
+                                lightPerObjectFlags
+            };
+            // 渲染CRP光照的pass
+            drawingSettings.SetShaderPassName(1, LitShaderTagId);
+
+            var filteringSetttings = new FilteringSettings(RenderQueueRange.opaque, camera.cullingMask, (uint) cameraRenderingLayerMask);
+            this.context.DrawRenderers(this.cullingResults, ref drawingSettings, ref filteringSetttings);
+
+            // step2: 绘制天空盒
+            // skybox和opaque进行ztest
+            this.context.DrawSkybox(this.camera);
+
+            // 绘制完不透明以及天空盒(也是不透明方式绘制)之后，缓存color以及depth
+            if (useColorTexture || useDepthTexture) {
+                CopyAttachments();
             }
 
-            if (useDepthTexture) {
-                this.cmdBuffer.ReleaseTemporaryRT(CameraDepthRTId);
-            }
+            // step3: 绘制半透明物体
+            sortingSettings.criteria = SortingCriteria.CommonTransparent;
+            drawingSettings.sortingSettings = sortingSettings;
+            filteringSetttings.renderQueueRange = RenderQueueRange.transparent;
+            this.context.DrawRenderers(this.cullingResults, ref drawingSettings, ref filteringSetttings);
+
+#if UNITY_EDITOR
+            this.DrawUnsupported();
+#endif
         }
         #endregion
 
         public void Dispose() {
             CoreUtils.Destroy(material);
-            CoreUtils.Destroy(missingTexture);
+            CoreUtils.Destroy(missingRT);
         }
 
         public enum EProfileStep {
@@ -303,12 +368,14 @@ namespace CignalRP {
 
         private void CopyAttachments() {
             if (useColorTexture) {
+                // 重新配置CameraColorRTId的宽高等属性
                 cmdBuffer.GetTemporaryRT(CameraColorRTId, renderSize.x, renderSize.y, 0, FilterMode.Bilinear, allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default);
                 if (copyTextureSupported) {
                     cmdBuffer.CopyTexture(CameraColorAttachmentId, CameraColorRTId);
                 }
                 else {
-                    DrawFrameBuffer(CameraColorAttachmentId, CameraColorRTId);
+                    // webgl有的不支持CopyTexture，所以只能低效的DrawCopy，类似blit
+                    DrawCopy(CameraColorAttachmentId, CameraColorRTId);
                 }
             }
 
@@ -318,12 +385,12 @@ namespace CignalRP {
                     cmdBuffer.CopyTexture(CameraDepthAttachmentId, CameraDepthRTId);
                 }
                 else {
-                    DrawFrameBuffer(CameraDepthAttachmentId, CameraDepthRTId, true);
+                    DrawCopy(CameraDepthAttachmentId, CameraDepthRTId, true);
                 }
             }
 
             if (!copyTextureSupported) {
-                // 渲染目标设置为原来的
+                // DrawCopy 会修改 rendertarget, 所以这里 设置为原来的
                 this.cmdBuffer.SetRenderTarget(CameraColorAttachmentId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
                     CameraDepthAttachmentId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             }
@@ -331,64 +398,23 @@ namespace CignalRP {
             ExecuteCmdBuffer(ref context, cmdBuffer);
         }
 
-        private void DrawFrameBuffer(RenderTargetIdentifier from, RenderTargetIdentifier to, bool isDepth = false) {
+        private void DrawCopy(RenderTargetIdentifier from, RenderTargetIdentifier to, bool isDepth = false) {
             cmdBuffer.SetGlobalTexture(sourceTextureId, from);
             cmdBuffer.SetRenderTarget(to, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             int passIndex = isDepth ? (int) ECopyET.CopyDepth : (int) ECopyET.CopyColor;
             cmdBuffer.DrawProcedural(Matrix4x4.identity, material, passIndex, MeshTopology.Triangles, 3);
         }
-
-        #region Draw
-        private void Draw(bool useDynamicBatching, bool useGPUInstancing, bool usePerObjectLights,
-            int cameraRenderingLayerMask) {
-            PerObjectData lightPerObjectFlags = PerObjectData.None;
-            if (usePerObjectLights) {
-                // 每个对象收到几个哪几个光源的影响?
-                lightPerObjectFlags = PerObjectData.LightData | PerObjectData.LightIndices;
-            }
-
-            // step1: 绘制不透明物体
-            var sortingSettings = new SortingSettings() {
-                // todo 设置lightmode的pass以及物体排序规则， 是否可以利用GPU的hsr规避这里的排序？？？
-                criteria = SortingCriteria.CommonOpaque
-            };
-            var drawingSettings = new DrawingSettings(UnlitShaderTagId, sortingSettings) {
-                enableDynamicBatching = useDynamicBatching,
-                enableInstancing = useGPUInstancing,
-                // 传递obj在lightmap中的uv
-                perObjectData = PerObjectData.Lightmaps |
-                                PerObjectData.LightProbe |
-                                PerObjectData.LightProbeProxyVolume | // lppv
-                                PerObjectData.ShadowMask |
-                                PerObjectData.OcclusionProbe |
-                                PerObjectData.OcclusionProbeProxyVolume |
-                                PerObjectData.ReflectionProbes |
-                                lightPerObjectFlags
-            };
-            // 渲染CRP光照的pass
-            drawingSettings.SetShaderPassName(1, LitShaderTagId);
-
-            var filteringSetttings = new FilteringSettings(RenderQueueRange.opaque, camera.cullingMask, (uint) cameraRenderingLayerMask);
-            this.context.DrawRenderers(this.cullingResults, ref drawingSettings, ref filteringSetttings);
-
-            // step2: 绘制天空盒
-            // skybox和opaque进行ztest
-            this.context.DrawSkybox(this.camera);
-
-            if (useColorTexture || useDepthTexture) {
-                CopyAttachments();
-            }
-
-            // step3: 绘制半透明物体
-            sortingSettings.criteria = SortingCriteria.CommonTransparent;
-            drawingSettings.sortingSettings = sortingSettings;
-            filteringSetttings.renderQueueRange = RenderQueueRange.transparent;
-            this.context.DrawRenderers(this.cullingResults, ref drawingSettings, ref filteringSetttings);
-
-#if UNITY_EDITOR
-            this.DrawUnsupported();
-#endif
+        
+        private void DrawBlendFinal (CameraSettings.FinalBlendMode finalBlendMode) {
+            cmdBuffer.SetGlobalFloat(finalSrcBlendId, (float)finalBlendMode.src);
+            cmdBuffer.SetGlobalFloat(finalDestBlendId, (float)finalBlendMode.dest);
+            cmdBuffer.SetGlobalTexture(sourceTextureId, CameraColorAttachmentId);
+            cmdBuffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget, finalBlendMode.dest == BlendMode.Zero ? RenderBufferLoadAction.DontCare : RenderBufferLoadAction.Load, RenderBufferStoreAction.Store);
+            cmdBuffer.SetViewport(camera.pixelRect);
+            cmdBuffer.DrawProcedural(Matrix4x4.identity, material, 0, MeshTopology.Triangles, 3);
+            
+            cmdBuffer.SetGlobalFloat(finalSrcBlendId, 1f);
+            cmdBuffer.SetGlobalFloat(finalDestBlendId, 0f);
         }
-        #endregion
     }
 }

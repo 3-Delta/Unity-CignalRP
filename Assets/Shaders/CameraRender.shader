@@ -6,8 +6,7 @@
         
         ZTest Always
         ZWrite off
-        
-        // 第一次见这个关键字
+
         HLSLINCLUDE
             #include "../ShaderLibrary/Common.hlsl"
             #include "../ShaderLibrary/UnityInput.hlsl"
@@ -17,6 +16,8 @@
         Pass
         {
 			Name "CopyColor"
+        	
+        	// 不写入depth
 			
 			HLSLPROGRAM
 				#pragma target 3.5
@@ -29,7 +30,7 @@
         {
 			Name "CopyDepth"
         	
-        	ColorMask 0
+        	ColorMask 0 // 不写入color, 只写入depth
         	Zwrite On
 			
 			HLSLPROGRAM

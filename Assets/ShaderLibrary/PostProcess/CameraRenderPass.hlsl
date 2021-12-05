@@ -1,6 +1,8 @@
 ﻿#ifndef CRP_CAMERA_RENDER_INCLUDED
 #define CRP_CAMERA_RENDER_INCLUDED
 
+// 功能类似于blit
+
 TEXTURE2D(_SourceTexture);
 
 struct Varyings
@@ -34,7 +36,7 @@ float4 CopyColorFragment(Varyings input) : SV_TARGET
     return color;
 }
 
-float4 CopyDepthFragment(Varyings input) : SV_TARGET
+float CopyDepthFragment(Varyings input) : SV_TARGET
 {
     float4 color = SAMPLE_TEXTURE2D_LOD(_SourceTexture, sampler_point_clamp, input.screenUV, 0);
     return color;

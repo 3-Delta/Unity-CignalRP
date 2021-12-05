@@ -74,13 +74,13 @@ float4 GetBase(InputConfig input)
     
     if(input.nearFade)
     {
-        float nearAttenuation = (input.fragment.zToCamera - GetInputProp(_NearFadeDistance)) / GetInputProp(_NearFadeRange);
+        float nearAttenuation = (input.fragment.depth - GetInputProp(_NearFadeDistance)) / GetInputProp(_NearFadeRange);
         texelColor.a = saturate(nearAttenuation);
     }
 
     if(input.softParticles)
     {
-        float depthDelta = input.fragment.zBuffer - input.fragment.zToCamera;
+        float depthDelta = input.fragment.zVS - input.fragment.depth;
         float nearAttenuation = (depthDelta - GetInputProp(_SoftParticlesDistance)) / GetInputProp(_SoftParticlesRange);
         texelColor.a = saturate(nearAttenuation);
     }
@@ -114,12 +114,13 @@ float GetFresnel(InputConfig c) {
     return 0.0;
 }
 
+// 扰动
 float2 GetDistortion(InputConfig input)
 {
     float4 texelColor = SAMPLE_TEXTURE2D(_DistortionTexture, sampler_DistortionTexture, input.baseUV);
     if(input.useFlipBookBlend)
     {
-        float4 preTexelColor = SAMPLE_TEXTURE2D(_DistortionTexture, sampler_BaseMap, input.flipBookUVB.xy);
+        float4 preTexelColor = SAMPLE_TEXTURE2D(_DistortionTexture, sampler_DistortionTexture, input.flipBookUVB.xy);
         texelColor = lerp(texelColor, preTexelColor, input.flipBookUVB.z);
     }
     return DecodeNormal(texelColor, GetInputProp(_DistortionStrength)).xy;

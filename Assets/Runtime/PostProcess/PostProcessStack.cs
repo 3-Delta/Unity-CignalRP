@@ -308,10 +308,7 @@ namespace CignalRP {
                 EPostProcessPass pass = EPostProcessPass.ColorGradeNone + (int)toneMapSettings.mode;
                 cmdBuffer.SetGlobalFloat(colorGradeLUTInLogCId, allowHDR && pass != EPostProcessPass.ColorGradeNone ? 1f : 0f);
                 Draw(sourceId, colorGradeLUTId, pass);
-
-                this.cmdBuffer.EndSample("CRP|ColorGrade");
                 
-                this.cmdBuffer.EndSample("CRP|ColorGrade");
                 cmdBuffer.SetGlobalVector(colorGradeLUTParamsId, new Vector4(1f / lutHeight, 1f / lutHeight, lutHeight - 1f));
                 if (renderSize.x == camera.pixelWidth) {
                     DrawFinal(sourceId, EPostProcessPass.ColorGradeFinal);

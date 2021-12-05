@@ -45,8 +45,12 @@ MonoBehaviour:
   shadowSettings: {fileID: -7423295556669773517}
   cameraBufferSettings:
     allowHDR: 1
+    copyColor: 0
+    copyColorReflection: 0
     copyDepth: 0
     copyDepthReflection: 0
+    renderScale: 1
+    bicubicRescaleMode: 0
   postProcessSettings: {fileID: 5314368177112552238}
   cameraRenderShader: {fileID: 4800000, guid: 3a9ce19251df9364ebda1e4605142d23, type: 3}
 --- !u!114 &5314368177112552238
@@ -68,6 +72,7 @@ MonoBehaviour:
     downscaleLimit: 32
     bloomBicubicUpsampling: 1
     intensity: 0.1
+    ignoreRenderScale: 0
   _toneMapSettings:
     mode: 1
   _colorAdjustSettings:

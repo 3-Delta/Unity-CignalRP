@@ -25,20 +25,22 @@ bool IsOrthoCamera()
     return unity_OrthoParams.w;
 }
 
-// depth [0, 1],是到近平面的距离
+// depth [0, 1]
+// 是Zndc[-1, 1]然后 +1/2存储的纹理depth[0, 1]
 // 从到近平面的距离 转换为 到相机的距离
 float OrthoDepthBufferToLinear(float depth)
 {
 #if UNITY_REVERSED_Z
-    depth = 1.0 - depth; //从 [-1， 1] -> [0, 1]
+    depth = 1.0 - depth;
 #endif
     float near = _ProjectionParams.y;
     float far = _ProjectionParams.z;
-    return (far - near) * depth + _ProjectionParams.y;
+    return (far - near) * depth + near;
 }
 
 SAMPLER(sampler_linear_clamp);
 SAMPLER(sampler_point_clamp);
+
 SAMPLER(sampler_CameraColorRT);
 #include "Fragment.hlsl"
 

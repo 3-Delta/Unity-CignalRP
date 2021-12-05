@@ -50,10 +50,16 @@ CBUFFER_START(UnityPerDraw)
 	// mesh renderer的layermask
 	float4 unity_RenderingLayer;
 
+	// y,near, z, far, w = 1+1/far
 	float4 _ProjectionParams;
-	// 正交相机信息,如果是正交相机，w为1，否则0
+
+	// x,正交相机width, y, 正交相机height w,正交相机信息,如果是正交相机，w为1，否则0
 	float4 unity_OrthoParams;
-	float4 _ScreenParams; // xy是宽高
+
+	// xy是宽高(rendertarget的宽高),z=1+1/width, w=1+1/height, 影响后处理的rt的宽高 
+	float4 _ScreenParams;
+
+	// zbuffer->ZVS
 	float4 _ZBufferParams;
 CBUFFER_END
 

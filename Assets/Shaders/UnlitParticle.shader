@@ -45,6 +45,7 @@
 			
             HLSLPROGRAM
             #pragma shader_feature _CLIPPING
+            
             #pragma shader_feature _VERTEX_COLOR
             #pragma shader_feature _FLIPBOOK_BLEND
 

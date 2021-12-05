@@ -43,6 +43,8 @@ struct Attributes
     UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
+// SV_POSITION在顶点着色器中表示CS的位置
+// 在片源着色器中则表示SS的位置
 struct Varyings
 {
     float4 positionCS_SS : SV_POSITION;
@@ -77,7 +79,7 @@ Varyings UnlitPassVertex(Attributes input)
 #endif
     
     output.baseUV = TransformBaseUV(input.baseUV.xy);
-#if defined(_VERTEX_COLOR)
+#if defined(_FLIPBOOK_BLEND)
     output.flipBookUVB.xy = TransformBaseUV(input.baseUV.zw);
     output.flipBookUVB.z = input.flipBookBlendFactor;
 #endif
@@ -92,7 +94,7 @@ float4 UnlitPassFragment(Varyings input) : SV_Target
     // 根据一个vertex的static获取显存数据
     InputConfig config = GetInputConfig(input.positionCS_SS, input.baseUV);
 #if defined(_VERTEX_COLOR)
-    config.color = CRP_INPUT_INCLUDED.color;
+    config.color = input.color;
 #endif
     
 #if defined(_FLIPBOOK_BLEND)
