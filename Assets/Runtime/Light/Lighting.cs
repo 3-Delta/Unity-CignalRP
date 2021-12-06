@@ -53,15 +53,13 @@ namespace CignalRP {
             this.context = context;
             this.cullingResults = cullingResults;
 
-            cmdBuffer.BeginSample(ProfileName);
+            CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, ProfileName, false);
 
             shadow.Setup(ref context, ref cullingResults, shadowSettings);
             SetLights(usePerObjectLights, cameraRenderingLayerMask);
             shadow.Render();
 
-            cmdBuffer.EndSample(ProfileName);
-
-            CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
+            CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, ProfileName);
         }
 
         public void Clean() {

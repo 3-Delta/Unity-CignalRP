@@ -47,7 +47,7 @@ namespace CignalRP {
             if (Handles.ShouldRenderGizmos()) {
                 if (useInterBuffer) {
                     DrawCopy(CameraDepthAttachmentId, BuiltinRenderTextureType.CameraTarget, true);
-                    ExecuteCmdBuffer(ref context, cmdBuffer);
+                    CmdBufferExt.Execute(ref context, cmdBuffer);
                 }
 
                 context.DrawGizmos(camera, GizmoSubset.PreImageEffects);

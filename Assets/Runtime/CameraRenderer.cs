@@ -8,7 +8,12 @@ using UnityEngine.Rendering;
 namespace CignalRP {
     // 负责单个相机的渲染
     public partial class CameraRenderer {
-        public const string ProfileName = "->CameraRender";
+        public enum ECopyET {
+            CopyColor = 0,
+            CopyDepth = 1,
+        }
+        
+        public const string ProfileName = "CRP|CameraRender";
         public CommandBuffer cmdBuffer { get; protected set; } = new CommandBuffer();
 
         public Camera camera { get; protected set; } = null;
@@ -73,6 +78,11 @@ namespace CignalRP {
             missingRT.SetPixel(0, 0, Color.white * 0.5f);
             missingRT.Apply(true, true);
         }
+        
+        public void Dispose() {
+            CoreUtils.Destroy(material);
+            CoreUtils.Destroy(missingRT);
+        }
 
         public void Render(ref ScriptableRenderContext context, Camera camera, bool useDynamicBatching, bool useGPUInstancing,
             ShadowSettings shadowSettings, PostProcessSettings postProcessSettings, CameraBufferSettings cameraBufferSettings, bool usePerObjectLights) {
@@ -133,7 +143,7 @@ namespace CignalRP {
             }
             
             cmdBuffer.SetGlobalVector(renderSizeId, new Vector4(1f / renderSize.x, 1f / renderSize.y, renderSize.x, renderSize.y));
-            ExecuteCmdBuffer(ref context, cmdBuffer);
+            CmdBufferExt.Execute(ref context, cmdBuffer);
 
             string cameraProfileName = "CRP|" + this.camera.name;
 #if UNITY_EDITOR
@@ -141,7 +151,7 @@ namespace CignalRP {
             this.cmdBuffer.name = cameraProfileName;
             Profiler.EndSample();
 #endif
-            ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, cameraProfileName);
+            CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, cameraProfileName);
 
             #region 绘制Shadow
             this.PreDraw(shadowSettings, usePerObjectLights, cameraBufferSettings);
@@ -153,9 +163,9 @@ namespace CignalRP {
             this.cmdBuffer.name = ProfileName;
             Profiler.EndSample();
 #endif
-            ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, ProfileName);
+            CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, ProfileName);
             this.Draw(useDynamicBatching, useGPUInstancing, usePerObjectLights, cameraSettings.cameraLayerMask);
-            ProfileSample(ref context, cmdBuffer, EProfileStep.End, ProfileName);
+            CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, ProfileName);
             #endregion
 
 #if UNITY_EDITOR
@@ -167,7 +177,7 @@ namespace CignalRP {
             this.PostDraw();
             #endregion
 
-            ProfileSample(ref context, cmdBuffer, EProfileStep.End, cameraProfileName);
+            CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, cameraProfileName);
 
             // submit之后才会开始绘制本桢
             this.context.Submit();
@@ -240,7 +250,7 @@ namespace CignalRP {
 
             cmdBuffer.SetGlobalTexture(CameraColorRTId, missingRT);
             cmdBuffer.SetGlobalTexture(CameraDepthRTId, missingRT);
-            ExecuteCmdBuffer(ref context, cmdBuffer);
+            CmdBufferExt.Execute(ref context, cmdBuffer);
         }
 
         private void PostDraw() {
@@ -253,7 +263,7 @@ namespace CignalRP {
             else if (useInterBuffer) {
                 // blend在后处理不启用的时候，也生效
                 DrawBlendFinal(cameraSettings.finalBlendMode);
-                ExecuteCmdBuffer(ref context, cmdBuffer);
+                CmdBufferExt.Execute(ref context, cmdBuffer);
             }
 #if UNITY_EDITOR
             this.DrawGizmosAfterFX();
@@ -332,40 +342,6 @@ namespace CignalRP {
         }
         #endregion
 
-        public void Dispose() {
-            CoreUtils.Destroy(material);
-            CoreUtils.Destroy(missingRT);
-        }
-
-        public enum EProfileStep {
-            Begin,
-            End,
-        }
-
-        public enum ECopyET {
-            CopyColor = 0,
-            CopyDepth = 1,
-        }
-
-        // 内联优化
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ProfileSample(ref ScriptableRenderContext context, CommandBuffer cmdBuffer, EProfileStep step, string sampleName) {
-            if (step == EProfileStep.Begin) {
-                cmdBuffer.BeginSample(sampleName);
-            }
-            else if (step == EProfileStep.End) {
-                cmdBuffer.EndSample(sampleName);
-            }
-
-            ExecuteCmdBuffer(ref context, cmdBuffer);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ExecuteCmdBuffer(ref ScriptableRenderContext context, CommandBuffer cmdBuffer) {
-            context.ExecuteCommandBuffer(cmdBuffer);
-            cmdBuffer.Clear();
-        }
-
         private void CopyAttachments() {
             if (useColorTexture) {
                 // 重新配置CameraColorRTId的宽高等属性
@@ -395,7 +371,7 @@ namespace CignalRP {
                     CameraDepthAttachmentId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             }
 
-            ExecuteCmdBuffer(ref context, cmdBuffer);
+            CmdBufferExt.Execute(ref context, cmdBuffer);
         }
 
         private void DrawCopy(RenderTargetIdentifier from, RenderTargetIdentifier to, bool isDepth = false) {

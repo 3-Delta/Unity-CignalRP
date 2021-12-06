@@ -147,7 +147,7 @@ namespace CignalRP {
                 this.DoColorGradeAndToneMap(sourceId);
             }
 
-            CameraRenderer.ExecuteCmdBuffer(ref this.context, this.cmdBuffer);
+            CmdBufferExt.Execute(ref this.context, this.cmdBuffer);
         }
     }
 
@@ -166,7 +166,7 @@ namespace CignalRP {
                 return false;
             }
 
-            cmdBuffer.BeginSample("CRP|Bloom");
+            CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, "CRP|Bloom", false);
 
             int fromId = sourceId;
             int toId = this.bloomPyramidId + 1;
@@ -223,7 +223,7 @@ namespace CignalRP {
 
             this.cmdBuffer.ReleaseTemporaryRT(fromId);
 
-            this.cmdBuffer.EndSample("CRP|Bloom");
+            CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, "CRP|Bloom", false);
             return true;
         }
 
@@ -281,14 +281,14 @@ namespace CignalRP {
         private void DoColorGradeAndToneMap(int sourceId) {
             int lutResolution = (int)postProcessSettings.lutResolution;
             /*if (lutResolution <= 0) {
-                this.cmdBuffer.BeginSample("CRP|PostProcess Final");
+                CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, "PostProcess Final", false);
                 ToneMapSettings toneMapSettings = this.postProcessSettings.toneMapSettings;
                 EPostProcessPass pass = EPostProcessPass.ColorGradeNone + (int)toneMapSettings.mode;
                 this.Draw(sourceId, BuiltinRenderTextureType.CameraTarget, EPostProcessPass.Copy);
-                this.cmdBuffer.EndSample("CRP|PostProcess Final");
+                CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, "PostProcess Final", false);
             }
             else*/ {
-                this.cmdBuffer.BeginSample("CRP|ColorGrade");
+                CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, "CRP|ColorGrade", false);
 
                 this.ConfigColorAdjust();
                 this.ConfigWhiteBalance();
@@ -327,7 +327,7 @@ namespace CignalRP {
                     DrawFinal(finalScaleId, EPostProcessPass.FinalScale);
                     cmdBuffer.ReleaseTemporaryRT(finalScaleId);
                 }
-                this.cmdBuffer.EndSample("CRP|PostProcess Final");
+                CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, "CRP|ColorGrade", false);
             }
         }
     }

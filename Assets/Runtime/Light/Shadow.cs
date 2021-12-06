@@ -109,7 +109,7 @@ namespace CignalRP {
                 cmdBuffer.ReleaseTemporaryRT(otherLightShadowAtlasId);
             }
 
-            CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
+            CmdBufferExt.Execute(ref context, cmdBuffer);
         }
 
         public void Render() {
@@ -131,8 +131,8 @@ namespace CignalRP {
                 // 指向
                 cmdBuffer.SetGlobalTexture(otherLightShadowAtlasId, dirLightShadowAtlasId);
             }
-
-            cmdBuffer.BeginSample(ProfileName);
+            
+            CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, ProfileName, false);
             int shadowMaskIndex = -1;
             if (useShadowMask && shadowSettings.useShadowMask) {
                 // shadowMaskIndex最终由光源和QualitySettings.shadowmaskMode一起决定
@@ -147,8 +147,7 @@ namespace CignalRP {
 
             cmdBuffer.SetGlobalVector(shadowAtlasSizeId, atlasSizes);
 
-            cmdBuffer.EndSample(ProfileName);
-            CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
+            CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, ProfileName);
         }
 
         // 只有平行光由shadowmap,其他光源没有shadowmap
@@ -159,8 +158,7 @@ namespace CignalRP {
             // 因为是shadowmap,所以只需要clearDepth
             cmdBuffer.ClearRenderTarget(true, false, Color.clear);
             cmdBuffer.SetGlobalFloat(shadowPancakingId, 1f);
-            cmdBuffer.BeginSample(ProfileName);
-            CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
+            CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, ProfileName);
 
             int tileCount = shadowedDirectionalLightCount * shadowSettings.directionalShadow.cascadeCount;
             // atlas中每行几个
@@ -180,8 +178,7 @@ namespace CignalRP {
             atlasSizes.x = atlasSize;
             atlasSizes.y = 1f / atlasSize;
 
-            cmdBuffer.EndSample(ProfileName);
-            CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
+            CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, ProfileName);
         }
 
         private void RenderDirectionalShadow(int lightIndex, int countPerLine, int tileSize) {
@@ -211,7 +208,7 @@ namespace CignalRP {
                 dirShadowMatrices[tileIndex] = ConvertToAtlasMatrix(projMatrix, viewMatrix, viewport, tileScale);
                 cmdBuffer.SetViewProjectionMatrices(viewMatrix, projMatrix);
                 cmdBuffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
-                CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
+                CmdBufferExt.Execute(ref context, cmdBuffer);
                 context.DrawShadows(ref shadowDrawSettings);
 
                 // 还原
@@ -230,8 +227,7 @@ namespace CignalRP {
             // shadowpancaking只在平行光影响，因为平行光阴影是正交相机
             cmdBuffer.SetGlobalFloat(shadowPancakingId, 0f);
 
-            cmdBuffer.BeginSample(ProfileName);
-            CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
+            CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, ProfileName);
 
             int tileCount = shadowedOtherLightCount;
             int countPerLine = tileCount <= 1 ? 1 : tileCount <= 4 ? 2 : 4;
@@ -251,8 +247,7 @@ namespace CignalRP {
             cmdBuffer.SetGlobalVectorArray(otherShadowTilesId, otherShadowTiles);
             SetKeywords(otherFilterKeywords, (int) (shadowSettings.otherShadow.filterMode) - 1);
 
-            cmdBuffer.EndSample(ProfileName);
-            CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
+            CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, ProfileName);
         }
 
         private void RenderSpotShadow(int lightIndex, int countPerLine, int tileSize) {
@@ -278,7 +273,7 @@ namespace CignalRP {
             cmdBuffer.SetViewProjectionMatrices(viewMatrix, projMatrix);
             // 斜度比率
             cmdBuffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
-            CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
+            CmdBufferExt.Execute(ref context, cmdBuffer);
 
             context.DrawShadows(ref shadowDrawSettings);
             // 还原
@@ -313,7 +308,7 @@ namespace CignalRP {
                 cmdBuffer.SetViewProjectionMatrices(viewMatrix, projMatrix);
                 cmdBuffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
 
-                CameraRenderer.ExecuteCmdBuffer(ref context, cmdBuffer);
+                CmdBufferExt.Execute(ref context, cmdBuffer);
 
                 context.DrawShadows(ref shadowDrawSettings);
                 // 还原
