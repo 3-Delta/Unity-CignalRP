@@ -54,7 +54,7 @@ void ShadowCasterPassFragment(Varyings input)
         float cutoff = GetCutoff(config);
         clip(base.a - cutoff);
     #elif defined(_SHADOWS_DITHER)
-        float dither = InterleavedGradientNoise(input.positionCS.xy, 0);
+        float dither = InterleavedGradientNoise(input.positionCS_SS.xy, 0);
         clip(base.a - dither);
     #endif
 }
