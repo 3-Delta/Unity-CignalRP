@@ -156,23 +156,63 @@ namespace CignalRP {
             #region 绘制Shadow
             this.PreDraw(shadowSettings, usePerObjectLights, cameraBufferSettings);
             #endregion
+            
+            #region framebuffer设置
+            // 有时候rendertarget是rt,那么怎么控制这个	ClearRenderTarget是对于camera生效，还是对于rt生效呢？
+            // 猜测应该是向上查找最近的一个rendertarget，也就是setrendertarget, 因为这里没有明显的设置过rendertarget，所以就当是framebuffer
 
-            #region 绘制Camera常规内容
-#if UNITY_EDITOR
+            //    public enum CameraClearFlags {
+            //    Skybox = 1,
+            //    Color = 2,
+            //    SolidColor = 2,
+            //    Depth = 3,
+            //    Nothing = 4
+            // }
+            CameraClearFlags flags = this.camera.clearFlags;
+            useInterBuffer = useColorTexture || useDepthTexture || useRenderScale || postProcessStack.IsActive;
+            if (useInterBuffer) {
+                // 后效开启时,在渲染每个camera的时候,都强制cleardepth,clearcolor
+                if (flags > CameraClearFlags.Color) {
+                    flags = CameraClearFlags.Color;
+                }
+
+                RenderTextureFormat format = allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
+                this.cmdBuffer.GetTemporaryRT(CameraColorAttachmentId, renderSize.x, renderSize.y, 0, FilterMode.Bilinear, format);
+                this.cmdBuffer.GetTemporaryRT(CameraDepthAttachmentId, renderSize.x, renderSize.y, 32, FilterMode.Point, RenderTextureFormat.Depth);
+
+                // 设置之后，zwite on的ztest pass物体就会写入CameraDepthAttachmentId
+                this.cmdBuffer.SetRenderTarget(CameraColorAttachmentId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
+                    CameraDepthAttachmentId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+            }
+            else {
+                // 否则直接写入framebuffer
+                // 即 BuiltinRenderTextureType.CameraTarget
+            }
+
+            bool clearDepth = flags <= CameraClearFlags.Depth;
+            bool clearColor = flags == CameraClearFlags.Color;
+            Color bgColor = clearColor ? this.camera.backgroundColor.linear : Color.clear;
+
+#if UNITY_EDITOR // 特殊处理ClearRenderTarget
             Profiler.BeginSample("Editor Only");
             this.cmdBuffer.name = ProfileName;
             Profiler.EndSample();
 #endif
+            // 为了Profiler以及Framedebugger中捕获
+            // ClearRendererTarget会自动收缩在CmdBufferName下面,所以要给设置一个cmdBuffer.name
+            this.cmdBuffer.ClearRenderTarget(clearDepth, clearColor, bgColor);
+
+            cmdBuffer.SetGlobalTexture(CameraColorRTId, missingRT);
+            cmdBuffer.SetGlobalTexture(CameraDepthRTId, missingRT);
+            CmdBufferExt.Execute(ref context, cmdBuffer);
+            #endregion
+
+            #region 绘制Camera常规内容
             CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, ProfileName);
             this.Draw(useDynamicBatching, useGPUInstancing, usePerObjectLights, cameraSettings.cameraLayerMask);
             CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, ProfileName);
             #endregion
-
-#if UNITY_EDITOR
-            Profiler.BeginSample("Editor Only");
-            this.cmdBuffer.name = cameraProfileName;
-            Profiler.EndSample();
-#endif
+            
             #region 绘制 后处理
             this.PostDraw();
             #endregion
@@ -209,48 +249,6 @@ namespace CignalRP {
             // 设置vp矩阵给shader的unity_MatrixVP属性，在Framedebugger中选中某个dc可看
             // vp由CPU构造
             this.context.SetupCameraProperties(this.camera);
-
-            // 有时候rendertarget是rt,那么怎么控制这个	ClearRenderTarget是对于camera生效，还是对于rt生效呢？
-            // 猜测应该是向上查找最近的一个rendertarget，也就是setrendertarget, 因为这里没有明显的设置过rendertarget，所以就当是framebuffer
-
-            //    public enum CameraClearFlags {
-            //    Skybox = 1,
-            //    Color = 2,
-            //    SolidColor = 2,
-            //    Depth = 3,
-            //    Nothing = 4
-            // }
-            CameraClearFlags flags = this.camera.clearFlags;
-            useInterBuffer = useColorTexture || useDepthTexture || useRenderScale || postProcessStack.IsActive;
-            if (useInterBuffer) {
-                // 后效开启时,在渲染每个camera的时候,都强制cleardepth,clearcolor
-                if (flags > CameraClearFlags.Color) {
-                    flags = CameraClearFlags.Color;
-                }
-
-                RenderTextureFormat format = allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
-                this.cmdBuffer.GetTemporaryRT(CameraColorAttachmentId, renderSize.x, renderSize.y, 0, FilterMode.Bilinear, format);
-                this.cmdBuffer.GetTemporaryRT(CameraDepthAttachmentId, renderSize.x, renderSize.y, 32, FilterMode.Point, RenderTextureFormat.Depth);
-
-                // 设置之后，zwite on的ztest pass物体就会写入CameraDepthAttachmentId
-                this.cmdBuffer.SetRenderTarget(CameraColorAttachmentId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
-                    CameraDepthAttachmentId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
-            }
-            else {
-                // 否则直接写入framebuffer
-                // 即 BuiltinRenderTextureType.CameraTarget
-            }
-
-            bool clearDepth = flags <= CameraClearFlags.Depth;
-            bool clearColor = flags == CameraClearFlags.Color;
-            Color bgColor = clearColor ? this.camera.backgroundColor.linear : Color.clear;
-            // 为了Profiler以及Framedebugger中捕获
-            // ClearRendererTarget会自动收缩在CmdBufferName下面
-            this.cmdBuffer.ClearRenderTarget(clearDepth, clearColor, bgColor);
-
-            cmdBuffer.SetGlobalTexture(CameraColorRTId, missingRT);
-            cmdBuffer.SetGlobalTexture(CameraDepthRTId, missingRT);
-            CmdBufferExt.Execute(ref context, cmdBuffer);
         }
 
         private void PostDraw() {
@@ -261,9 +259,10 @@ namespace CignalRP {
                 this.postProcessStack.Render(CameraColorAttachmentId);
             }
             else if (useInterBuffer) {
+                CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, "CRP|Blit", false);
                 // blend在后处理不启用的时候，也生效
                 DrawBlendFinal(cameraSettings.finalBlendMode);
-                CmdBufferExt.Execute(ref context, cmdBuffer);
+                CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, "CRP|Blit");
             }
 #if UNITY_EDITOR
             this.DrawGizmosAfterFX();

@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 
 namespace CignalRP {

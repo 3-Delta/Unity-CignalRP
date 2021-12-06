@@ -1,5 +1,6 @@
 ﻿using UnityEditor;
 using UnityEngine;
+using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 using static CignalRP.PostProcessSettings;
 
@@ -73,7 +74,7 @@ namespace CignalRP {
         private static readonly int finalDestBlendId = Shader.PropertyToID("_FinalDestBlend");
         private static readonly int finalScaleId = Shader.PropertyToID("_FinalResultId");
         private static readonly int useBicubicRescaleId = Shader.PropertyToID("_UseBicubicRescale");
-        
+
         private int bloomPyramidId;
 
         public bool IsActive {
@@ -101,14 +102,14 @@ namespace CignalRP {
             }
         }
 
-        public void Setup(ref ScriptableRenderContext context, Camera camera, Vector2Int renderSize, PostProcessSettings postProcessSettings, bool allowHDR, 
+        public void Setup(ref ScriptableRenderContext context, Camera camera, Vector2Int renderSize, PostProcessSettings postProcessSettings, bool allowHDR,
             CameraBufferSettings.EBicubicRescaleMode bicubicRescaleMode) {
             this.context = context;
             this.camera = camera;
             this.cameraIni = camera.GetComponent<CameraRendererIni>();
             this.allowHDR = allowHDR;
             this.renderSize = renderSize;
-            this.bicubicRescaleMode =  bicubicRescaleMode;
+            this.bicubicRescaleMode = bicubicRescaleMode;
 
             this.postProcessSettings = allowHDR ? postProcessSettings : null;
             if (cameraSettings.overridePostProcess) {
@@ -121,12 +122,12 @@ namespace CignalRP {
             // 这里其实只是 重新设置 gpu的texture: _PostProcessSource1
             this.cmdBuffer.SetGlobalTexture(postProcessSourceRTId1, from);
             this.cmdBuffer.SetRenderTarget(to, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
-            this.cmdBuffer.DrawProcedural(Matrix4x4.identity, this.postProcessSettings.material, (int)pass, MeshTopology.Triangles, 3);
+            this.cmdBuffer.DrawProcedural(Matrix4x4.identity, this.postProcessSettings.material, (int) pass, MeshTopology.Triangles, 3);
         }
 
         private void DrawFinal(RenderTargetIdentifier from, EPostProcessPass pass) {
-            this.cmdBuffer.SetGlobalFloat(finalSrcBlendId, (float)cameraSettings.finalBlendMode.src);
-            this.cmdBuffer.SetGlobalFloat(finalDestBlendId, (float)cameraSettings.finalBlendMode.dest);
+            this.cmdBuffer.SetGlobalFloat(finalSrcBlendId, (float) cameraSettings.finalBlendMode.src);
+            this.cmdBuffer.SetGlobalFloat(finalDestBlendId, (float) cameraSettings.finalBlendMode.dest);
             this.cmdBuffer.SetGlobalTexture(postProcessSourceRTId1, from);
 
             // 如果不设置SetViewport，那么后camera的画面会覆盖前camera的画面，即使后camera设置来正确的rt的size,但是会将这个size的画面铺满整个camera
@@ -135,7 +136,7 @@ namespace CignalRP {
             // blend的时候,需要从framebuffer中加载colorbuffer, 所以Load
             var loadAction = cameraSettings.finalBlendMode.dest == BlendMode.Zero ? RenderBufferLoadAction.DontCare : RenderBufferLoadAction.Load;
             this.cmdBuffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget, loadAction, RenderBufferStoreAction.Store);
-            this.cmdBuffer.DrawProcedural(Matrix4x4.identity, this.postProcessSettings.material, (int)pass, MeshTopology.Triangles, 3);
+            this.cmdBuffer.DrawProcedural(Matrix4x4.identity, this.postProcessSettings.material, (int) pass, MeshTopology.Triangles, 3);
         }
 
         public void Render(int sourceId) {
@@ -146,8 +147,6 @@ namespace CignalRP {
             else {
                 this.DoColorGradeAndToneMap(sourceId);
             }
-
-            CmdBufferExt.Execute(ref this.context, this.cmdBuffer);
         }
     }
 
@@ -156,7 +155,7 @@ namespace CignalRP {
             BloomSettings bloomSettings = this.postProcessSettings.bloomSettings;
             int width = renderSize.x / 2;
             int height = renderSize.y / 2;
-            
+
             if (bloomSettings.ignoreRenderScale) {
                 width = camera.pixelWidth / 2;
                 height = camera.pixelHeight / 2;
@@ -217,13 +216,12 @@ namespace CignalRP {
             this.cmdBuffer.SetGlobalFloat(bloomIntensityId, bloomSettings.intensity);
             this.cmdBuffer.SetGlobalTexture(postProcessSourceRTId2, sourceId);
 
-            this.cmdBuffer.GetTemporaryRT(bloomResultId, renderSize.x, renderSize.y, 0,
-                FilterMode.Bilinear, format);
+            this.cmdBuffer.GetTemporaryRT(bloomResultId, renderSize.x, renderSize.y, 0, FilterMode.Bilinear, format);
             this.Draw(fromId, bloomResultId, EPostProcessPass.BloomCombine);
 
             this.cmdBuffer.ReleaseTemporaryRT(fromId);
 
-            CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, "CRP|Bloom", false);
+            CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, "CRP|Bloom", true);
             return true;
         }
 
@@ -279,56 +277,51 @@ namespace CignalRP {
 
         // 最终执行tonemap
         private void DoColorGradeAndToneMap(int sourceId) {
-            int lutResolution = (int)postProcessSettings.lutResolution;
-            /*if (lutResolution <= 0) {
-                CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, "PostProcess Final", false);
-                ToneMapSettings toneMapSettings = this.postProcessSettings.toneMapSettings;
-                EPostProcessPass pass = EPostProcessPass.ColorGradeNone + (int)toneMapSettings.mode;
-                this.Draw(sourceId, BuiltinRenderTextureType.CameraTarget, EPostProcessPass.Copy);
-                CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, "PostProcess Final", false);
+            CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, "CRP|ColorGrade", false);
+            
+            this.ConfigColorAdjust();
+            this.ConfigWhiteBalance();
+            this.ConfigSplitTone();
+            this.ConfigChannelMixer();
+            this.ConfigSMH();
+
+            int lutResolution = (int) postProcessSettings.lutResolution;
+            int lutHeight = lutResolution;
+            int lutWidth = lutHeight * lutHeight;
+            RenderTextureFormat format = allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
+            // 文章固定使用DefaultHDR
+            cmdBuffer.GetTemporaryRT(colorGradeLUTId, lutWidth, lutHeight, 0, FilterMode.Bilinear, RenderTextureFormat.DefaultHDR);
+            cmdBuffer.SetGlobalVector(colorGradeLUTParamsId, new Vector4(lutHeight, 0.5f / lutWidth, 0.5f / lutHeight, lutHeight / (lutHeight - 1f)));
+
+            ToneMapSettings toneMapSettings = this.postProcessSettings.toneMapSettings;
+            EPostProcessPass pass = EPostProcessPass.ColorGradeNone + (int) toneMapSettings.mode;
+            cmdBuffer.SetGlobalFloat(colorGradeLUTInLogCId, allowHDR && pass != EPostProcessPass.ColorGradeNone ? 1f : 0f);
+            Draw(sourceId, colorGradeLUTId, pass);
+
+            CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, "CRP|ColorGrade", true);
+
+            CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, "CRP|DrawFinal", false);
+
+            cmdBuffer.SetGlobalVector(colorGradeLUTParamsId, new Vector4(1f / lutHeight, 1f / lutHeight, lutHeight - 1f));
+            if (renderSize.x == camera.pixelWidth) {
+                DrawFinal(sourceId, EPostProcessPass.ColorGradeFinal);
             }
-            else*/ {
-                CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, "CRP|ColorGrade", false);
+            else {
+                cmdBuffer.SetGlobalFloat(finalSrcBlendId, 1f);
+                cmdBuffer.SetGlobalFloat(finalDestBlendId, 0f);
+                cmdBuffer.GetTemporaryRT(finalScaleId, renderSize.x, renderSize.y, 0, FilterMode.Bilinear, RenderTextureFormat.Default);
+                Draw(sourceId, finalScaleId, EPostProcessPass.ColorGradeFinal);
 
-                this.ConfigColorAdjust();
-                this.ConfigWhiteBalance();
-                this.ConfigSplitTone();
-                this.ConfigChannelMixer();
-                this.ConfigSMH();
-
-                int lutHeight = lutResolution;
-                int lutWidth = lutHeight * lutHeight;
-                RenderTextureFormat format = allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
-                // 文章固定使用DefaultHDR
-                cmdBuffer.GetTemporaryRT(colorGradeLUTId, lutWidth, lutHeight, 0, FilterMode.Bilinear, RenderTextureFormat.DefaultHDR);
-                cmdBuffer.SetGlobalVector(colorGradeLUTParamsId, new Vector4(lutHeight, 0.5f / lutWidth, 0.5f / lutHeight,
-                    lutHeight / (lutHeight - 1f)));
-
-                ToneMapSettings toneMapSettings = this.postProcessSettings.toneMapSettings;
-                EPostProcessPass pass = EPostProcessPass.ColorGradeNone + (int)toneMapSettings.mode;
-                cmdBuffer.SetGlobalFloat(colorGradeLUTInLogCId, allowHDR && pass != EPostProcessPass.ColorGradeNone ? 1f : 0f);
-                Draw(sourceId, colorGradeLUTId, pass);
-                
-                cmdBuffer.SetGlobalVector(colorGradeLUTParamsId, new Vector4(1f / lutHeight, 1f / lutHeight, lutHeight - 1f));
-                if (renderSize.x == camera.pixelWidth) {
-                    DrawFinal(sourceId, EPostProcessPass.ColorGradeFinal);
-                }
-                else {
-                    cmdBuffer.SetGlobalFloat(finalSrcBlendId, 1f);
-                    cmdBuffer.SetGlobalFloat(finalDestBlendId, 0f);
-                    cmdBuffer.GetTemporaryRT(finalScaleId, renderSize.x, renderSize.y, 0, FilterMode.Bilinear, RenderTextureFormat.Default);
-                    Draw(sourceId, finalScaleId, EPostProcessPass.ColorGradeFinal);
-
-                    bool bicubicSampling =
-                        bicubicRescaleMode == CameraBufferSettings.EBicubicRescaleMode.UpAndDown ||
-                        bicubicRescaleMode == CameraBufferSettings.EBicubicRescaleMode.UpOnly &&
-                        renderSize.x < camera.pixelWidth;
-                    cmdBuffer.SetGlobalFloat(useBicubicRescaleId, bicubicSampling ? 1f : 0f);
-                    DrawFinal(finalScaleId, EPostProcessPass.FinalScale);
-                    cmdBuffer.ReleaseTemporaryRT(finalScaleId);
-                }
-                CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, "CRP|ColorGrade", false);
+                bool bicubicSampling =
+                    bicubicRescaleMode == CameraBufferSettings.EBicubicRescaleMode.UpAndDown ||
+                    bicubicRescaleMode == CameraBufferSettings.EBicubicRescaleMode.UpOnly &&
+                    renderSize.x < camera.pixelWidth;
+                cmdBuffer.SetGlobalFloat(useBicubicRescaleId, bicubicSampling ? 1f : 0f);
+                DrawFinal(finalScaleId, EPostProcessPass.FinalScale);
+                cmdBuffer.ReleaseTemporaryRT(finalScaleId);
             }
+
+            CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, "CRP|DrawFinal", true);
         }
     }
 }
