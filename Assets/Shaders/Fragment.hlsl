@@ -18,12 +18,13 @@ struct Fragment
     float zVS; // 观察空间的z
 };
 
+// http://scarletsky.github.io/2021/03/06/gl-depth-transformation/
 // 片元着色器的positionCS_SS,也就是屏幕空间位置
 Fragment GetFragment(float4 positionSS)
 {
     Fragment fg;
     fg.positionSS = positionSS.xy;
-    // 正交矩阵的w永远为1,所以透视出发之后和原来一样, 所以z不能正确表达depth
+    // 正交矩阵的w永远为1,所以透视除法之后和原来一样, 所以z不能正确表达depth
     // 透视的w则是-z
     // <shader入门精要> P.79
     fg.depth = IsOrthoCamera() ? OrthoDepthBufferToLinear(positionSS.z) : positionSS.w;

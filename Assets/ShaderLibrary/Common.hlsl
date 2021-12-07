@@ -25,7 +25,8 @@ bool IsOrthoCamera()
     return unity_OrthoParams.w;
 }
 
-// depth [0, 1]
+// depth [0, 1], 0是近裁剪面,1是远裁剪面
+// [-1, 1]的情况下,-1是近裁剪面,1是远裁剪面
 // 是Zndc[-1, 1]然后 +1/2存储的纹理depth[0, 1]
 // 从到近平面的距离 转换为 到相机的距离
 float OrthoDepthBufferToLinear(float depth)
