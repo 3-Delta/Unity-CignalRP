@@ -8,6 +8,8 @@
         ZWrite off
 
         HLSLINCLUDE
+        	#pragma enable_d3d11_debug_symbols
+
             #include "../ShaderLibrary/Common.hlsl"
             #include "../ShaderLibrary/UnityInput.hlsl"
             #include "../ShaderLibrary/PostProcess/CameraRenderPass.hlsl"
