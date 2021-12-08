@@ -15,6 +15,7 @@
 10. camera/meshrenderer/light各自的renderinglayermask是怎么互相影响的?
 11. 怎么实现 只降低3dcamera分辨率,ui相机分辨率不变化?
 12. 反射 怎么 实现?
+13. 类似youtube的动态分辨率的试下？
 
 
 学习资料:
