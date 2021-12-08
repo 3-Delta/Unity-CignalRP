@@ -2,20 +2,10 @@
 学习URP, 实现自定义的渲染管线
 
 预计实现：
-1. 每个相机渲染频率差异化控制
-2. 尽可能使用同一个相机渲染 场景和UI
-3. hsr对于渲染物体顺序影响？是否可以在渲染不透明物体的时候，不在cpu端进行从近到远的排序？
-4. normalbias推近多少合适？
-5. 每个光源对应的layer设计？顶点光?像素光? 只针对某些layer进行后处理?
-6. 为什么使用hdr时候，会对于gamma/linear有影响？也就是会导致画面变暗？
-7. lightmap采样的时候,如何得知是哪张lightmap中进行采样? 是不是传递给shader的unity_Lightmap已经是确定的了[通过framedebugger确认]? 
-    A: cpu提前计算得到具体的哪种lightmap, 然后传递给gpu
-8. lightmap是否压缩是不是lightsetting中设置的?可以通过调整这个设置看一下framedebugger的参数传递
-9. 为什么shadowmask下 min(bakedShadow, realTimeShadow);是这种实现方式?而且是lerp(1)开始?
-10. camera/meshrenderer/light各自的renderinglayermask是怎么互相影响的?
-11. 怎么实现 只降低3dcamera分辨率,ui相机分辨率不变化?
-12. 反射 怎么 实现?
-13. 类似youtube的动态分辨率的试下？
+1. 尽可能使用同一个相机渲染 场景和UI
+2. normalbias推近多少合适？
+3. 为什么使用hdr时候，会对于gamma/linear有影响？也就是会导致画面变暗？
+4. 为什么shadowmask下 min(bakedShadow, realTimeShadow);是这种实现方式?而且是lerp(1)开始?
 
 
 学习资料:
