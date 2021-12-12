@@ -19,6 +19,8 @@ struct Fragment
 };
 
 // http://scarletsky.github.io/2021/03/06/gl-depth-transformation/
+// https://zhuanlan.zhihu.com/p/258036220
+// https://www.zhihu.com/question/377102103/answer/1068061765
 // 片元着色器的positionCS_SS,也就是屏幕空间位置
 Fragment GetFragment(float4 positionSS)
 {
