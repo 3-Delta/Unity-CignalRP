@@ -139,6 +139,8 @@ namespace CignalRP {
 
         // 点光，无位置，有方向
         private void SetupDirectionalLights(int index, int visibleIndex, ref VisibleLight visibleLight) {
+            // light.color.linear其实就意味着，inspector中的颜色被看作是gamma颜色 https://zhuanlan.zhihu.com/p/163944531 [sRGB]
+            // shader的inspector如果想将颜色看作linear, 需要添加[Gamma],这样unity就会做类似将sRGB纹理转成linear的操作
             // finalColor = light.color.linear * light.intensity;
             dirLightColors[index] = visibleLight.finalColor;
             // https://www.zhihu.com/people/kmac-3/answers
