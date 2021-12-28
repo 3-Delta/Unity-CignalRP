@@ -11,7 +11,7 @@ float4 _CameraRenderSize;
 
 struct Fragment
 {
-    float2 positionSS; // 起点是左下的(0,0)
+    float2 positionSS; // 起点是左下的(0,0), 边长为1的矩形
     float2 screenUV; // 屏幕空间uv
     
     float depth; // 距离相机xy平面,而不是近平面的距离
