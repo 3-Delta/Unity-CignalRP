@@ -14,6 +14,7 @@ struct Fragment
     float2 positionSS; // 起点是左下的(0,0), 边长为1的矩形
     float2 screenUV; // 屏幕空间uv
     
+    // 《Shader入门精要》P270中可以得知，zbuffer最小0就是near, 最大1就是far,也就是说zbuffer是到相机位置的距离，而不是到近裁剪面的距离
     float fragZview; // 观察空间的z,当前片元的depth
     float bufferZview; // 观察空间的z, zbuffer中的depth，后续会比较fragZview，进行过度，或者z-test操作
 };
@@ -22,7 +23,7 @@ struct Fragment
 // https://zhuanlan.zhihu.com/p/258036220
 // https://www.zhihu.com/question/377102103/answer/1068061765
 // https://zhuanlan.zhihu.com/p/92315967 最合理解释
-// 片元着色器的positionCS_SS,也就是屏幕空间位置
+// 片元着色器的positionCS_SS,也就是屏幕空间位置 
 Fragment GetFragment(float4 positionSS)
 {
     Fragment fg;
