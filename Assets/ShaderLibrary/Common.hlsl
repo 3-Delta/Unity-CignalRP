@@ -20,6 +20,9 @@
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/SpaceTransforms.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Packing.hlsl"
 
+// 获取cbuffer的某个属性
+#define GetCbufferProp(cbuffer, name) UNITY_ACCESS_INSTANCED_PROP(cbuffer, name)
+
 bool IsOrthoCamera()
 {
     return unity_OrthoParams.w;
