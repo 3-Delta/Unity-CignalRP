@@ -9,6 +9,7 @@
 
 
 学习资料:
+0. https://github.com/phi-lira/UniversalShaderExamples
 1. https://edu.uwa4d.com/course-intro/0/282?purchased=true 
 2. https://catlikecoding.com/unity/tutorials/custom-srp/ 
 3. https://github.com/3-Delta/Unity-Urp 
