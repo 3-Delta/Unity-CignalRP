@@ -190,7 +190,9 @@ namespace CignalRP {
             }
 
             bool clearDepth = flags <= CameraClearFlags.Depth;
-            bool clearColor = flags == CameraClearFlags.Color;
+            bool clearColor = flags == CameraClearFlags.Color; 
+            // 为什么不是flags <= CameraClearFlags.Color, skybox应该也要clear color啊，
+            // uwa说是本来skybox就会覆盖，所以这里不clearcolor也可以
             Color bgColor = clearColor ? this.camera.backgroundColor.linear : Color.clear;
 
 #if UNITY_EDITOR // 特殊处理ClearRenderTarget
@@ -247,6 +249,7 @@ namespace CignalRP {
             this.postProcessStack.Setup(ref this.context, this.camera, renderSize, this.postProcessSettings, allowHDR, cameraBufferSettings.bicubicRescaleMode);
 
             // 设置vp矩阵给shader的unity_MatrixVP属性，在Framedebugger中选中某个dc可看
+            // 把当前摄像机的信息告诉上下文，这样shader中就可以获取到当前帧下摄像机的信息，比如VP矩阵等
             // vp由CPU构造
             this.context.SetupCameraProperties(this.camera);
         }

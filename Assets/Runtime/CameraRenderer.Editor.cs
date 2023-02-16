@@ -4,12 +4,18 @@ using UnityEngine;
 using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 
+// cmdbuffer.ClearRenderTarget会自动包裹在cmdbuffer的名字的域内
+// ctx.DrawSkyBox则内部自己会建立一个自己的域
+// 相同域会自动合并
+// 规则参照SampleScope.png
+
 namespace CignalRP {
     public partial class CameraRenderer {
         // 因为srpbatcher需要特定的shader数据格式，所以除了SRPDefaultUnlit之外的基本全部不支持
+        // 不能包括shadercaster和meta
         private static readonly ShaderTagId[] UnsupportedShaderTagIds = {
             new ShaderTagId("Always"),
-            new ShaderTagId("ForwardBase"),
+            new ShaderTagId("ForwardBase"), // Standard.shader就是forwardBase和forwardAdd
             new ShaderTagId("PrepassBase"),
             new ShaderTagId("Vertex"),
             new ShaderTagId("VertexLMRGBM"),
