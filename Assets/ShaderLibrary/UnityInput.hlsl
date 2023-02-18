@@ -62,7 +62,11 @@ CBUFFER_START(UnityPerDraw)
 	// zbuffer->ZVS
 	float4 _ZBufferParams;
 CBUFFER_END
+// https://zhuanlan.zhihu.com/p/594539671
+// 定义UnityPerDraw这个CBUFFER时需要注意，所有变量在CBUFFER中都必须以组为单位被定义，意味着CBUFFER中出现的一个变量其对应Block Feature中所有变量都需要同时出现
 
+// 为什么v, p矩阵不在定义呢？
+// 因为vp是每个go都一样的，是公用的
 float4x4 unity_MatrixV;	// v
 float4x4 unity_MatrixVP;	// vp
 float4x4 glstate_matrix_projection; // p矩阵

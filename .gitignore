@@ -67,3 +67,5 @@
 /UnityEngine.UI.Tests.csproj
 /*.sln
 /ProjectSettings/ProjectVersion.txt
+/app.config
+/packages.config
