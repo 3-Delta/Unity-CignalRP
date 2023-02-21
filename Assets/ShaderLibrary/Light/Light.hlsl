@@ -7,6 +7,9 @@
 #define MAX_DIR_LIGHT_COUNT 4
 #define MAX_OTHER_LIGHT_COUNT 64
 
+// 为什么这里不像UnityPerMaterial的定义一样，被包裹在UNITY_INSTANCING_BUFFER_START之内， 而是在cbuffer之内？也就是说不需要支持GPUInstancing吗？
+// 不需要支持，因为GPUInstancing只是将相同mesh的gameobejct的材质差异性PerMaterial 和位置旋转等差异性PerDraw 组装成数组形式， 也就是和gameobejct是紧密关联的
+// 而下面这些光源参数，是所有gameobject共享的，所以不需要为了为了GPUInstancing而设计成UNITY_INSTANCING_BUFFER_START之内，Cbuffer即可。
 CBUFFER_START(_CRPLight)
     int _DirectionalLightCount; 
     float4 _DirectionalLightColors[MAX_DIR_LIGHT_COUNT];

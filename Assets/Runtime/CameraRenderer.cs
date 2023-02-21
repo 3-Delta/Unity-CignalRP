@@ -318,6 +318,8 @@ namespace CignalRP {
                                 lightPerObjectFlags
             };
             // 渲染CRP光照的pass
+            // 下标的意义就是lightmode的渲染的优先级，0最大 https://zhuanlan.zhihu.com/p/600876271
+            // 这里第二个参数好像应该是lightmode的tag，不能使其他tag
             drawingSettings.SetShaderPassName(1, LitShaderTagId);
 
             var filteringSetttings = new FilteringSettings(RenderQueueRange.opaque, camera.cullingMask, (uint) cameraRenderingLayerMask);

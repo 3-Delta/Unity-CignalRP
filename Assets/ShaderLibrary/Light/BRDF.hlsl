@@ -38,7 +38,10 @@ struct BRDF
     float fresnal;
 };
 
-// 计算漫反射率
+// REFLECTIVITY其实是高光占比，所以下面计算的是 漫反射率
+// 漫反射率
+// metallic越大，则自身颜色越不明显，对周围颜色的反射越清晰，其实就是漫反射越小，高光反射越大
+// 但是metallic为0的时候，此时漫反射最大，高光反射却不是0，有个最小的高光反射0.04
 float OneMinusReflectivity(float metallic)
 {
     // 如果metallic == 1？也就是纯金属，那么ret = 0
@@ -52,6 +55,9 @@ float OneMinusReflectivity(float metallic)
     // 差值，漫反射0.96~0，高光反射0.04~1 如果不考虑吸收的话
     return lerp(1 - MIN_REFLECTIVITY, 0, metallic);
 
+    // 正常如果不考虑最低的高光反射的话，应该是 return 1 - metallic; 也就会返回范围在[0, 1]之间
+    // 如果考虑最低的高光反射的话，就需要限制返回返回在[0, 1-0.04]之间， 也就是(1 - metallic) * (1 - 0.04)
+
     // 换算：(MIN_REFLECTIVITY - 1) * metallic + (1 - MIN_REFLECTIVITY)
     // = (1 - MIN_REFLECTIVITY) * (1 - metallic)
 }
@@ -61,11 +67,15 @@ BRDF GetBRDF(FragSurface surface)
     // 非金属的纯粹漫反射的物体
     BRDF brdf;
     float oneMinus = OneMinusReflectivity(surface.metallic);
+    // 金属的漫反射是黑色，高光是本身颜色
+    // 非金属漫反射接近本身颜色，高光是最小反射率*白色
     brdf.diffuse = surface.color * oneMinus;
 
-    // todo 为什么不是如下？ 非金属不贡献镜面反射
+    // todo 为什么不是如下？ 因为非金属虽然有最小高光反射0.04，但是却不影响高光颜色，会用白色(1, 1, 1);
     // brdf.specular = lerp(MIN_REFLECTIVITY, 1, surface.metallic) * surface.color;
-    brdf.specular = lerp(MIN_REFLECTIVITY, surface.color, surface.metallic);
+    // 高光颜色总是偏金属本身的颜色，例如黄金的高光颜色是金黄色，白银的高光颜色是灰色，黄铜的高光颜色是黄色。
+    float3 minColor = MIN_REFLECTIVITY * (1, 1, 1);
+    brdf.specular = lerp(minColor, surface.color, surface.metallic);
 
     brdf.perceptualRoughness = PerceptualSmoothnessToPerceptualRoughness(surface.smoothness);
     brdf.roughness = PerceptualRoughnessToRoughness(brdf.perceptualRoughness);
@@ -96,19 +106,20 @@ float SpecularStrength(FragSurface surface, BRDF brdf, Light light)
 // 这里使用的brdf是Minimalist CookTorrance BRDF的一种变体
 float3 DirectBRDF(FragSurface surface, BRDF brdf, Light light)
 {
+    // 高光强度和光滑度有关系
     float specularStrength = SpecularStrength(surface, brdf, light);
     #if defined(_PREMULTIPLY_ALPHA)
-        // 为了解决变化alpha的时候,高光也跟随变化的情况
+        // 为了解决变化alpha的时候,高光也跟随变化的情况，也就是只让漫反射跟随变化，高光不变化
         // diffuse必须PreMulAlpha，而且blendMode为one, other
         // 假设一种极端情况，surface.alpha为0，此时如果需要高光显示，那么必然和colorbuffer混合的时候，不能使用srcAlpha作为混合因子，因为此时srcAlpha ==0,
         // scrAlpha * surfaceColor + dstColor * (otherFactor) == dstColor * (otherFactor), 很显然，不能使用这个混合模式
         // 为了确保srcColor一定被保留，必须one, other的混合模式
         // 然后为了alpha只影响到diffuse, 而不影响specular, 可以在DirectBRDF函数中，将diffuse设置为跟随alpha变化，也就是*alpha
         // 同时也说明，alpha其实作用只是blend, 没有其他任何作用
-        // 一般情况下感觉alpha起作用，完全是以为blendmode是srcalpha, 会导致srcColor被完全消除，所以感觉alpha起了作用
+        // 一般情况下感觉alpha起作用，完全是因为blendmode是srcAlpha, 会导致srcColor被完全消除，所以感觉alpha起了作用
         return specularStrength * brdf.specular + brdf.diffuse * surface.alpha;
     #else
-    return specularStrength * brdf.specular + brdf.diffuse;
+        return specularStrength * brdf.specular + brdf.diffuse;
     #endif
 }
 
