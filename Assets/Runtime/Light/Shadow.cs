@@ -7,13 +7,17 @@ using UnityEngine.Rendering;
 namespace CignalRP {
     public class Shadow {
         public struct ShadowedDirectionalLight {
-            public int visibleLightIndex;
+            public int indexOfVisibleLights;
 
             // 斜度比例偏差值
             public float slopeScaleBias;
 
             // 光源近裁剪
             public float nearPlaneOffset;
+
+#if UNITY_EDITOR
+            public string lightName;
+#endif
         }
 
         public struct ShadowedOtherLight {
@@ -38,6 +42,7 @@ namespace CignalRP {
         public const int MAX_CASCADE_COUNT = 4;
 
         private int shadowedDirectionalLightCount = 0;
+        // 内部缓存，不传递给GPU
         private ShadowedDirectionalLight[] shadowedDirectionalLights = new ShadowedDirectionalLight[MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT];
 
         private static readonly int dirLightShadowAtlasId = Shader.PropertyToID("_DirectionalLightShadowAtlas");
@@ -154,6 +159,7 @@ namespace CignalRP {
         private void RenderDirectionalShadow() {
             int atlasSize = (int) shadowSettings.directionalShadow.shadowMapAtlasSize;
             cmdBuffer.GetTemporaryRT(dirLightShadowAtlasId, atlasSize, atlasSize, 32, FilterMode.Bilinear, RenderTextureFormat.Shadowmap);
+            // 给shadowmap设定RenderTarget, 然后正常渲染非shadowmap的时候需要重新切换RenderTarget到屏幕吗？
             cmdBuffer.SetRenderTarget(dirLightShadowAtlasId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             // 因为是shadowmap,所以只需要clearDepth
             cmdBuffer.ClearRenderTarget(true, false, Color.clear);
@@ -163,10 +169,26 @@ namespace CignalRP {
             int tileCount = shadowedDirectionalLightCount * shadowSettings.directionalShadow.cascadeCount;
             // atlas中每行几个
             // 比如2light * 3cascade, 还是atlas中每行4个
+            // https://edu.uwa4d.com/lesson-detail/282/1311/0?isPreview=0 因为unity源码支持最大的cascade是4 
             int countPerLine = tileCount <= 1 ? 1 : tileCount <= 4 ? 2 : 4;
             int tileSize = atlasSize / countPerLine;
             for (int i = 0; i < shadowedDirectionalLightCount; ++i) {
+#if UNITY_EDITOR
+                var light = shadowedDirectionalLights[i];
+                string name = $"{i.ToString()} DirectionalLight -> {light.lightName}";
+
+                // 貌似对于CmdBuffer底层的一些默认绘制，总是会和CmdBuffer.name挂钩，而不是和指定的profileName挂钩
+                // 比如ClearRenderTarget,比如DrawShadow, 所以我们这里手动修改cmdBuffer.name， 然后后面再还原回去
+                cmdBuffer.name = name;
+                CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, ProfileName);
+#endif
                 RenderDirectionalShadow(i, countPerLine, tileSize);
+
+#if UNITY_EDITOR
+                // 还原 cmdBuffer.name
+                cmdBuffer.name = ProfileName;
+                CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, ProfileName);
+#endif
             }
 
             cmdBuffer.SetGlobalVectorArray(cascadeCullingSpheresId, cascadeCullingSpheres);
@@ -183,7 +205,7 @@ namespace CignalRP {
 
         private void RenderDirectionalShadow(int lightIndex, int countPerLine, int tileSize) {
             var light = shadowedDirectionalLights[lightIndex];
-            var shadowDrawSettings = new ShadowDrawingSettings(cullingResults, light.visibleLightIndex) {
+            var shadowDrawSettings = new ShadowDrawingSettings(cullingResults, light.indexOfVisibleLights) {
                 // 让shadow也受layermask影响
                 useRenderingLayerMaskTest = true,
             };
@@ -193,7 +215,7 @@ namespace CignalRP {
             float tileScale = 1f / countPerLine;
 
             for (int i = 0; i < cascadeCount; ++i) {
-                cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(light.visibleLightIndex, i, cascadeCount, ratios,
+                cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(light.indexOfVisibleLights, i, cascadeCount, ratios,
                     tileSize, light.nearPlaneOffset,
                     out Matrix4x4 viewMatrix, out Matrix4x4 projMatrix, out ShadowSplitData splitData);
 
@@ -209,7 +231,19 @@ namespace CignalRP {
                 cmdBuffer.SetViewProjectionMatrices(viewMatrix, projMatrix);
                 cmdBuffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
                 CmdBufferExt.Execute(ref context, cmdBuffer);
+
+#if UNITY_EDITOR
+                string name = $"cascade {i.ToString()}";
+                cmdBuffer.name = name;
+                CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, ProfileName);
+#endif
                 context.DrawShadows(ref shadowDrawSettings);
+
+#if UNITY_EDITOR
+                // 还原 cmdBuffer.name
+                cmdBuffer.name = ProfileName;
+                CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, ProfileName);
+#endif
 
                 // 还原
                 cmdBuffer.SetGlobalDepthBias(0f, 0f);
@@ -383,8 +417,6 @@ namespace CignalRP {
             int col = index % countPerLine;
             Vector2 offset = new Vector2(col, row);
 
-            // 这个结果计算出来应该是旋转90的吧！！！
-            // qustion??? 这个结果计算出来应该是旋转90的吧！！！
             cmdBuffer.SetViewport(new Rect(offset.x * tileSize, offset.y * tileSize, tileSize, tileSize));
             return offset;
         }
@@ -410,7 +442,7 @@ namespace CignalRP {
             }
         }
 
-        public Vector3 ReserveDirectionalShadows(Light light, int visibleLightIndex) {
+        public Vector3 ReserveDirectionalShadows(Light light, int indexOfVisibleLights) {
             if (shadowedDirectionalLightCount < MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT &&
                 light.shadows != LightShadows.None && light.shadowStrength > 0f) {
                 int shadowMaskChannel = -1;
@@ -421,13 +453,17 @@ namespace CignalRP {
                 }
 
                 // 如果被裁剪,返回 -light.shadowStrength而不是, 正的-light.shadowStrength
-                if (!cullingResults.GetShadowCasterBounds(visibleLightIndex, out Bounds bounds)) {
+                if (!cullingResults.GetShadowCasterBounds(indexOfVisibleLights, out Bounds bounds)) {
                     return new Vector4(-light.shadowStrength, 0f, 0f, shadowMaskChannel);
                 }
 
                 // 光源设置为投射阴影，但是没有物件接收阴影，不需要shadowmap
                 shadowedDirectionalLights[shadowedDirectionalLightCount] = new ShadowedDirectionalLight() {
-                    visibleLightIndex = visibleLightIndex,
+#if UNITY_EDITOR
+                    lightName = light.name,
+#endif
+
+                    indexOfVisibleLights = indexOfVisibleLights,
                     slopeScaleBias = light.shadowBias,
                     // https://edu.uwa4d.com/lesson-detail/282/1311/0?isPreview=0
                     // 影响unity阴影平坠的shadowmap的形成
