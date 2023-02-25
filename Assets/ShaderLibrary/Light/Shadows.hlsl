@@ -48,7 +48,7 @@ CBUFFER_START(_CRPShadows)
     float4 _CascadeCullingSpheres[MAX_CASCADE_COUNT];
     float4 _CascadeData[MAX_CASCADE_COUNT];
 
-    float4 _ShadowDistanceVSFade;
+    float4 _ShadowDistanceVSFade; // 1/MaxDistance, 1/fadeDistance
     float4 _ShadowAtlasSize; // new Vector4(atlasSize, 1f / atlasSize)
 
     float4x4 _DirectionalShadowLightMatrices[MAX_SHADOW_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADE_COUNT];
@@ -127,6 +127,8 @@ ShadowData GetShadowData(FragSurface surface)
     data.shadowMask.shadow = 1.0;
 
     data.inAnyCascade = 1;
+    // 本来是 超过最大阴影距离，则认为不接受阴影，参照Assets\ShaderLibrary\Light\maxDistance和cullsphere.png的绿色和蓝色
+    // 为了做最大距离的阴影不会突然被切掉，所以从距离最大距离之前的fadeDistance之前就要开始渐变
     data.inMaxVSShadowDistance = FadedShadowStrength(surface.depthVS, _ShadowDistanceVSFade.x, _ShadowDistanceVSFade.y);
 
     int i;
@@ -134,8 +136,8 @@ ShadowData GetShadowData(FragSurface surface)
     {
         float4 sphere = _CascadeCullingSpheres[i];
         float distanceSqr = DistanceSquare(surface.positionWS, sphere.xyz);
-        if (distanceSqr < sphere.w)
-        {
+        if (distanceSqr < sphere.w) // 在某个cascade的裁剪球之内
+        {   
             if (i == _CascadeCount - 1)
             {
                 data.inMaxVSShadowDistance *= FadedShadowStrength(distanceSqr, _CascadeData[i].x, _ShadowDistanceVSFade.z);
@@ -147,6 +149,8 @@ ShadowData GetShadowData(FragSurface surface)
 
     if (i == _CascadeCount && _CascadeCount > 0)
     {
+        // 片元不在任何一个cascade之内
+        // 参照Assets\ShaderLibrary\Light\maxDistance和cullsphere.png，黄色就是在maxShadowDistance之内，但是不在裁剪球内
         data.inAnyCascade = 0;
     }
 

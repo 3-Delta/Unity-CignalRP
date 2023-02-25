@@ -215,19 +215,29 @@ namespace CignalRP {
             float tileScale = 1f / countPerLine;
 
             for (int i = 0; i < cascadeCount; ++i) {
+                // 其实这个函数是计算当前camera的i级联子视锥体 和 当前light的裁剪球的交叉
                 cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(light.indexOfVisibleLights, i, cascadeCount, ratios,
                     tileSize, light.nearPlaneOffset,
+                    // 每个级联的矩阵都不一样， 两个light的同一个级联的矩阵也不一样
                     out Matrix4x4 viewMatrix, out Matrix4x4 projMatrix, out ShadowSplitData splitData);
 
+                // 所有相机全部使用同样的级联，所以也就是所有的相机使用同样的裁剪球
+                // 其实也可以给每个相机设定不同的级联设置，类似每个camera有自己的renderScale
                 if (lightIndex == 0) {
+                    // 为什么传递裁剪球给GPU呢？因为如图SphereShadowBound.png所以，球体内部会包含一些在camera视锥体之外的范围，这就可能导致在视锥体之外还能看到阴影
+                    // 这就需要shader中计算岗前片源是属于哪个cascade(逐个比对每个裁剪球半径), 这就需要片源着色器中判断某个片源是否在裁剪球之外
+                    // 为什么使用裁剪球，而不是裁剪矩形，是因为相机经常旋转，这时候方形也会跟随变化，这就会导致生成shadowmap的时候，内容变化比较大，导致采样shadowmap的时候，相比较camera的上个旋转会突变
                     SetCascadeData(i, splitData.cullingSphere, tileSize);
                 }
 
                 shadowDrawSettings.splitData = splitData;
                 int tileIndex = startTileIndexOfThisLight + i;
+                // 设置viewPort, 如果不设置，则会全部绘制在屏幕上，叠在一起
                 Vector2 viewport = SetTileViewport(tileIndex, countPerLine, tileSize);
+
                 // 得到world->light的矩阵， 此时camera在light位置
                 dirShadowMatrices[tileIndex] = ConvertToAtlasMatrix(projMatrix, viewMatrix, viewport, tileScale);
+
                 cmdBuffer.SetViewProjectionMatrices(viewMatrix, projMatrix);
                 cmdBuffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
                 CmdBufferExt.Execute(ref context, cmdBuffer);
@@ -237,6 +247,7 @@ namespace CignalRP {
                 cmdBuffer.name = name;
                 CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, ProfileName);
 #endif
+                // 只渲染lightmode为shadowcaster的pass
                 context.DrawShadows(ref shadowDrawSettings);
 
 #if UNITY_EDITOR
@@ -371,14 +382,15 @@ namespace CignalRP {
             Matrix4x4 worldToShadow = GetShadowTransform(projMatrix, viewMatrix);
 
             Matrix4x4 sliceTransform = Matrix4x4.identity;
-            // 缩放, 将[0, 1]的立方体控制为[0, scale]的立方体
+            // 缩放xy轴
             sliceTransform.m00 = scale;
             sliceTransform.m11 = scale;
 
-            // 平移
+            // 平移xy轴
             sliceTransform.m03 = offset.x * scale;
             sliceTransform.m13 = offset.y * scale;
 
+            // 必须对xy轴进行sclae以及translate的转换，否则采样shadowmap的时候会有问题，导致最终阴影表现不正确
             return sliceTransform * worldToShadow;
         }
 

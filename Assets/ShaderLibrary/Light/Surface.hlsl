@@ -11,7 +11,7 @@ struct FragSurface
     float alpha;
 
     float3 viewDirectionWS;
-    float depthVS;
+    float depthVS; // 观察空间深度，距离camera位置的深度，不是距离近裁剪面的深度
 
     float metallic;
     float smoothness;
