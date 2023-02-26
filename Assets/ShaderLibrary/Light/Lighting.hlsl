@@ -13,6 +13,7 @@ float3 IncomingLight(FragSurface surface, Light light)
     // 光源的衰减和阴影的衰减合成一起 [light.shadowAttenuation; 如果在阴影中,为0,否则大于0 小于1]
     dotNL *= light.GetAttenuation();
     dotNL = saturate(dotNL);
+    // 其实就是《shader入门精要》漫反射的计算方式
     return dotNL * light.color;
 }
 
@@ -55,24 +56,24 @@ float3 GetLighting(FragSurface surface, BRDF brdf, GI gi)
     }
 
     #if defined(_LIGHTS_PER_OBJECT)
-    for (int i = 0; i < min(unity_LightData.y, 8); ++ i)
-    {
-        int lightIndex = unity_LightIndices[(uint)i / 4][(uint)i % 4];
-        Light light = GetOtherLight(lightIndex, surface, globalShadowData);
-        if(RenderingMayerOverlap(surface, light))
+        for (int i = 0; i < min(unity_LightData.y, 8); ++ i)
         {
-            color += GetLighting(surface, brdf, light);
+            int lightIndex = unity_LightIndices[(uint)i / 4][(uint)i % 4];
+            Light light = GetOtherLight(lightIndex, surface, globalShadowData);
+            if(RenderingMayerOverlap(surface, light))
+            {
+                color += GetLighting(surface, brdf, light);
+            }
         }
-    }
     #else
-    for (int i = 0; i < GetOtherLightCount(); ++ i)
-    {
-        Light light = GetOtherLight(i, surface, globalShadowData);
-        if(RenderingMayerOverlap(surface, light))
+        for (int i = 0; i < GetOtherLightCount(); ++ i)
         {
-            color += GetLighting(surface, brdf, light);
+            Light light = GetOtherLight(i, surface, globalShadowData);
+            if(RenderingMayerOverlap(surface, light))
+            {
+                color += GetLighting(surface, brdf, light);
+            }
         }
-    }
     #endif
     return color;
 }

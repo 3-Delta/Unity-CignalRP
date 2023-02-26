@@ -88,6 +88,7 @@ float4 LitPassFragment(Varyings input) : SV_Target
     // realtime光 + gi光
     float3 color = GetLighting(surface, brdf, gi);
     
+    // 其实自发光在meta中已经贡献了一部分GI，这里继续贡献一部分非GI
     // 最后添加自发光
     color += GetEmission(config);
     return float4(color, GetFinalAlpha(surface.alpha));

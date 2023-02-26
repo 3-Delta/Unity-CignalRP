@@ -119,6 +119,7 @@ float3 SampleEnvironment(FragSurface surface, BRDF brdf)
 GI GetGI(float2 lightmapUV, FragSurface surface, BRDF brdf)
 {
     GI gi;
+    // 获取间接光的diffuse，间接光可以当做一个临时的直接光处理
     gi.diffuse = SampleLightmap(lightmapUV);
     gi.diffuse += SampleLightProbe(surface);
 

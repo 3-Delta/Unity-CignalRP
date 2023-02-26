@@ -9,6 +9,8 @@
 // https://zhuanlan.zhihu.com/p/137455866
 // https://zhuanlan.zhihu.com/p/378781638查看所有的内置的PerDraw属性
 // cbuffer的使用中，需要注意的一些潜规则：https://www.xuanyusong.com/archives/4932 https://zhuanlan.zhihu.com/p/560076693
+
+// 其实更应该叫做UnityPerObject, 也就是针对每个meshrender的，所以vp矩阵不在这里定义，o2w在这里， lightmap相关在这里
 CBUFFER_START(UnityPerDraw)
 	float4x4 unity_ObjectToWorld;
 	float4x4 unity_WorldToObject;
@@ -18,8 +20,9 @@ CBUFFER_START(UnityPerDraw)
 	// 如果将vp. v矩阵放到这里，则会出现clip渲染不正确的现象
 
 	// lightmap相关
-	// 给vertex的每个lightmapUV传递scaleoffset, 为什么不在顶点属性中传递呢?
-	// 对于纹理的scaleoffset好像也是外部传递的, 因为一个纹理中,所有的scaleoffset都应该是一样的,而不是每个vertex不一样
+	// 给vertex的每个lightmapUV传递scaleoffset, 为什么不在UnityPerMaterial中定义呢？
+	// 正常一个纹理的ST，每个文素ST都应该是一样的，所以都是在UnityPerMaterial定义，
+	// 但是lightmap比较特殊，他是很多个物体的烘焙光组合在一起的，每个物体都有自己的ST，所以不能放到UnityPerMaterial
 	float4 unity_LightmapST; 
 	float4 unity_DynamicLightmapST;
 

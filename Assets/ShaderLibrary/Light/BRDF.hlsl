@@ -123,14 +123,16 @@ float3 DirectBRDF(FragSurface surface, BRDF brdf, Light light)
     #endif
 }
 
-float3 IndirectBRDF(FragSurface surface, BRDF brdf, float3 diffuse, float3 specular)
+float3 IndirectBRDF(FragSurface surface, BRDF brdf, float3 giDiffuse, float3 giSpecular)
 {
     float NDotV = dot(surface.normalWS, surface.viewDirectionWS);
     float fresnalStrength = surface.fresnalStrength * Pow4(1.0 - saturate(NDotV));
-    float3 reflection = specular * lerp(brdf.specular, brdf.fresnal, fresnalStrength);
+    float3 reflection = giSpecular * lerp(brdf.specular, brdf.fresnal, fresnalStrength);
     reflection /= brdf.roughness * brdf.roughness + 1.0;
     
-    return diffuse * brdf.diffuse + reflection;
+    // 这里为甚两个diffuse相乘？因为brdf的diffuse其实是frag属性，giDiffuse其实是间接光属性，把间接光可以当做一个新的临时光源处理，那就需要*
+    // 直接光光源怎么计算diffuse的？就是光源颜色*frag颜色*dotNL！
+    return giDiffuse * brdf.diffuse + reflection;
 }
 
 #endif
