@@ -207,7 +207,7 @@ namespace CignalRP {
             var light = shadowedDirectionalLights[lightIndex];
             var shadowDrawSettings = new ShadowDrawingSettings(cullingResults, light.indexOfVisibleLights) {
                 // 让shadow也受layermask影响
-                useRenderingLayerMaskTest = true,
+                useRenderingLayerMaskTest = this.shadowSettings.useRenderingLayerMask,
             };
             int cascadeCount = shadowSettings.directionalShadow.cascadeCount;
             int startTileIndexOfThisLight = lightIndex * cascadeCount;
@@ -298,7 +298,7 @@ namespace CignalRP {
         private void RenderSpotShadow(int lightIndex, int countPerLine, int tileSize) {
             var light = shadowedOtherLights[lightIndex];
             var shadowDrawSettings = new ShadowDrawingSettings(cullingResults, light.visibleLightIndex) {
-                useRenderingLayerMaskTest = true,
+                useRenderingLayerMaskTest = this.shadowSettings.useRenderingLayerMask,
             };
 
             cullingResults.ComputeSpotShadowMatricesAndCullingPrimitives(light.visibleLightIndex, out Matrix4x4 viewMatrix, out Matrix4x4 projMatrix, out ShadowSplitData splitData);
@@ -328,7 +328,7 @@ namespace CignalRP {
         private void RenderPointShadow(int lightIndex, int countPerLine, int tileSize) {
             var light = shadowedOtherLights[lightIndex];
             var shadowDrawSettings = new ShadowDrawingSettings(cullingResults, light.visibleLightIndex) {
-                useRenderingLayerMaskTest = true,
+                useRenderingLayerMaskTest = this.shadowSettings.useRenderingLayerMask,
             };
 
             float texelSize = 2f / tileSize;

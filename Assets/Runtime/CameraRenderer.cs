@@ -171,7 +171,7 @@ namespace CignalRP {
             CameraClearFlags flags = this.camera.clearFlags;
             useInterBuffer = useColorTexture || useDepthTexture || useRenderScale || postProcessStack.IsActive;
             if (useInterBuffer) {
-                // 后效开启时,在渲染每个camera的时候,都强制cleardepth,clearcolor
+                // 后效开启时,在渲染每个camera的时候,都强制cleardepth,clearcolor, 否则多个camera的内容会叠加
                 if (flags > CameraClearFlags.Color) {
                     flags = CameraClearFlags.Color;
                 }
