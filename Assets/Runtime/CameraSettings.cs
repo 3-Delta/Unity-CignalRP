@@ -20,8 +20,6 @@ namespace CignalRP
 
         [Header("相机渲染帧率")] public int rendererFrequency = -1;
 
-        [Header("光影")]
-
         [Header("后处理")] public bool enablePostProcess = true;
         public bool overridePostProcess = false;
         public PostProcessSettings postProcessSettings;

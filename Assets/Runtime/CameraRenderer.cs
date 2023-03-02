@@ -235,8 +235,13 @@ namespace CignalRP {
             // layer裁减等操作
             if (this.camera.TryGetCullingParameters(out ScriptableCullingParameters parameters)) {
                 // camera上不勾选cameraRenderShadow，那么在该camera上就会将阴影距离设置为0，这就会剔除所有的光源
-                var finalShadowDistance = cameraRenderShadow ? shadowSettings.maxShadowVSDistance : ShadowSettings.NEAR_ZERO;
+                bool canRenderShadow = cameraRenderShadow && SystemInfo.supportsShadows; // 其实还得看light是否投射阴影
+                var finalShadowDistance = canRenderShadow ? shadowSettings.maxShadowVSDistance : 0f;
                 parameters.shadowDistance = Mathf.Min(finalShadowDistance, this.camera.farClipPlane);
+
+                if (!canRenderShadow) {
+                    parameters.cullingOptions &= ~(CullingOptions.ShadowCasters);
+                }
                 cullResults = this.context.Cull(ref parameters);
                 return true;
             }
