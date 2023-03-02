@@ -90,7 +90,9 @@ namespace CignalRP {
             this.context = context;
             this.postProcessSettings = postProcessSettings;
 
+            bool cameraRenderShadow = true;
             if (camera.TryGetComponent(out cameraIni)) {
+                cameraRenderShadow = cameraIni.cameraSettings.renderShadow;
                 if (cameraIni.cameraSettings.rendererFrequency <= 0) {
                     cameraIni.cameraSettings.rendererFrequency = -1;
                 }
@@ -117,7 +119,7 @@ namespace CignalRP {
             this.Prepare();
 #endif
 
-            if (!this.TryCull(out this.cullingResults, shadowSettings)) {
+            if (!this.TryCull(out this.cullingResults, shadowSettings, cameraRenderShadow)) {
                 return;
             }
 
@@ -227,12 +229,14 @@ namespace CignalRP {
 
         #region Cull
         // 是否有任意物体进入该camera的视野，得到剔除结果
-        private bool TryCull(out CullingResults cullResults, ShadowSettings shadowSettings) {
+        private bool TryCull(out CullingResults cullResults, ShadowSettings shadowSettings, bool cameraRenderShadow) {
             cullResults = default;
             // 以物体为基准，剔除视野之外的物体，应该没有执行遮挡剔除
             // layer裁减等操作
             if (this.camera.TryGetCullingParameters(out ScriptableCullingParameters parameters)) {
-                parameters.shadowDistance = Mathf.Min(shadowSettings.maxShadowVSDistance, this.camera.farClipPlane);
+                // camera上不勾选cameraRenderShadow，那么在该camera上就会将阴影距离设置为0，这就会剔除所有的光源
+                var finalShadowDistance = cameraRenderShadow ? shadowSettings.maxShadowVSDistance : ShadowSettings.NEAR_ZERO;
+                parameters.shadowDistance = Mathf.Min(finalShadowDistance, this.camera.farClipPlane);
                 cullResults = this.context.Cull(ref parameters);
                 return true;
             }

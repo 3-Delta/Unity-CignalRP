@@ -6,11 +6,12 @@ namespace CignalRP {
     [Serializable]
     [CreateAssetMenu(menuName = "CRP/ShadowSettings")]
     public class ShadowSettings : ScriptableObject {
+        public const float NEAR_ZERO = 0.001f;
         // 针对相机，不是光源，而且不是到相机位置的距离， 而是cameraview的depth，简单理解就是到camera的nearplane的距离
         // 这里到底是到相机位置，还是近裁剪面？ 应该是相机位置，https://edu.uwa4d.com/lesson-detail/282/1311/0?isPreview=0这里应该讲错了
-        [Min(0.01f)] 
+        [Min(NEAR_ZERO)] 
         public float maxShadowVSDistance = 100f;
-
+        
         // 防止maxShadowVSDistance处阴影突然消失，所以需要一个渐变，也就是在maxShadowVSDistance之前的某个distance开始渐变
         [FormerlySerializedAs("distanceFace")] 
         [Range(0.001f, 1f)] public float distanceFade = 0.1f;

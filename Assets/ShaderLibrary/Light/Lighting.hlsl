@@ -14,6 +14,7 @@ float3 IncomingLight(FragSurface surface, Light light)
     dotNL *= light.GetAttenuation();
     dotNL = saturate(dotNL);
     // 其实就是《shader入门精要》漫反射的计算方式
+    // light.color是cpu传递的，其实是color*intensity
     return dotNL * light.color;
 }
 
