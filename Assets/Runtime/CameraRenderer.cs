@@ -39,7 +39,7 @@ namespace CignalRP {
 
         private Material material;
         private Texture2D missingRT; // 有时候depthRT不需要，但是流程会使用到，所以给个默认的
-        public static readonly int sourceTextureId = Shader.PropertyToID("_SourceTexture");
+        public static readonly int sourceTextureId = Shader.PropertyToID("_SourceRT");
 
         private static bool copyTextureSupported = SystemInfo.copyTextureSupport > CopyTextureSupport.None;
 
@@ -262,8 +262,8 @@ namespace CignalRP {
             this.postProcessStack.Setup(ref this.context, this.camera, renderSize, this.postProcessSettings, allowHDR, cameraBufferSettings.bicubicRescaleMode);
 
             // 设置vp矩阵给shader的unity_MatrixVP属性，在Framedebugger中选中某个dc可看
-            // 把当前摄像机的信息告诉上下文，这样shader中就可以获取到当前帧下摄像机的信息，比如VP矩阵等
-            // vp由CPU构造
+            // 把当前摄像机的信息告诉上下文，这样shader中就可以获取到当前帧下摄像机的信息，比如VP矩阵等， 同时之前因为rendertarget是shadowmap, 所以这里默认还会将屏幕设置为RenderTarget
+            // vp由CPU构造，传递给gpu
             this.context.SetupCameraProperties(this.camera);
         }
 
@@ -271,12 +271,16 @@ namespace CignalRP {
 #if UNITY_EDITOR
             this.DrawGizmosBeforeFX();
 #endif
+            // 此时渲染目标是：CameraColorAttachmentId 和 CameraDepthAttachmentId
+
+            // 后处理激活的情况下
             if (this.postProcessStack.IsActive) {
                 this.postProcessStack.Render(CameraColorAttachmentId);
             }
             else if (useInterBuffer) {
                 CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, "CRP|Blit", false);
                 // blend在后处理不启用的时候，也生效
+                // 目的是：多个相机的内容混合
                 DrawBlendFinal(cameraSettings.finalBlendMode);
                 CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, "CRP|Blit");
             }
@@ -377,7 +381,7 @@ namespace CignalRP {
                 }
                 else {
                     // webgl有的不支持CopyTexture，所以只能低效的DrawCopy，类似blit
-                    DrawCopy(CameraColorAttachmentId, CameraColorRTId);
+                    DrawCopy(CameraColorAttachmentId, CameraColorRTId, ECopyET.CopyColor);
                 }
             }
 
@@ -387,7 +391,7 @@ namespace CignalRP {
                     cmdBuffer.CopyTexture(CameraDepthAttachmentId, CameraDepthRTId);
                 }
                 else {
-                    DrawCopy(CameraDepthAttachmentId, CameraDepthRTId, true);
+                    DrawCopy(CameraDepthAttachmentId, CameraDepthRTId, ECopyET.CopyDepth);
                 }
             }
 
@@ -400,21 +404,28 @@ namespace CignalRP {
             CmdBufferExt.Execute(ref context, cmdBuffer);
         }
 
-        private void DrawCopy(RenderTargetIdentifier from, RenderTargetIdentifier to, bool isDepth = false) {
+        private void DrawCopy(RenderTargetIdentifier from, RenderTargetIdentifier to, ECopyET copyMode) {
             cmdBuffer.SetGlobalTexture(sourceTextureId, from);
             cmdBuffer.SetRenderTarget(to, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
-            int passIndex = isDepth ? (int) ECopyET.CopyDepth : (int) ECopyET.CopyColor;
+            int passIndex = (int)copyMode;
             cmdBuffer.DrawProcedural(Matrix4x4.identity, material, passIndex, MeshTopology.Triangles, 3);
         }
         
         private void DrawBlendFinal (CameraSettings.FinalBlendMode finalBlendMode) {
             cmdBuffer.SetGlobalFloat(finalSrcBlendId, (float)finalBlendMode.src);
             cmdBuffer.SetGlobalFloat(finalDestBlendId, (float)finalBlendMode.dest);
+
+            // 将当前camera的CameraColorAttachmentId的颜色传递给屏幕BuiltinRenderTextureType.CameraTarget
+            // 目的是为了多相机的颜色混合
             cmdBuffer.SetGlobalTexture(sourceTextureId, CameraColorAttachmentId);
             cmdBuffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget, finalBlendMode.dest == BlendMode.Zero ? RenderBufferLoadAction.DontCare : RenderBufferLoadAction.Load, RenderBufferStoreAction.Store);
+
+            // 这里为什么不是 camera.pixelRect * renderScale呢?
+            // 因为renderscale只需要影响RT的size就行，最终rt还是需要显示在camera的Viewport上
             cmdBuffer.SetViewport(camera.pixelRect);
             cmdBuffer.DrawProcedural(Matrix4x4.identity, material, 0, MeshTopology.Triangles, 3);
             
+            // 还原 混合因子
             cmdBuffer.SetGlobalFloat(finalSrcBlendId, 1f);
             cmdBuffer.SetGlobalFloat(finalDestBlendId, 0f);
         }

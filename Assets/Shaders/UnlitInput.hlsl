@@ -43,7 +43,7 @@ struct InputConfig
     bool softParticles;
 };
 
-InputConfig GetInputConfig(float4 positionSS, float2 baseUV)
+InputConfig GetInputConfig(float4 fragPositionSS, float2 baseUV)
 {
     InputConfig c;
     c.baseUV = baseUV;
@@ -53,7 +53,7 @@ InputConfig GetInputConfig(float4 positionSS, float2 baseUV)
 
     c.nearFade = false;
     c.softParticles = false;
-    c.fragment = GetFragment(positionSS);
+    c.fragment = GetFragment(fragPositionSS);
     return c;
 }
 
@@ -74,13 +74,13 @@ float4 GetBase(InputConfig input)
     
     if(input.nearFade)
     {
-        float nearAttenuation = (input.fragment.fragZview - GetInputProp(_NearFadeDistance)) / GetInputProp(_NearFadeRange);
+        float nearAttenuation = (input.fragment.zVS - GetInputProp(_NearFadeDistance)) / GetInputProp(_NearFadeRange);
         texelColor.a = saturate(nearAttenuation);
     }
 
     if(input.softParticles)
     {
-        float depthDelta = input.fragment.bufferZview - input.fragment.fragZview;
+        float depthDelta = input.fragment.zbufferVS - input.fragment.zVS;
         float nearAttenuation = (depthDelta - GetInputProp(_SoftParticlesDistance)) / GetInputProp(_SoftParticlesRange);
         texelColor.a = saturate(nearAttenuation);
     }

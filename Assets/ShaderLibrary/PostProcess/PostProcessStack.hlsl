@@ -53,7 +53,7 @@ Varyings DefaultVertex(uint vertexID : SV_VertexID)
     y = vertexID == 1 ? 2 : 0;
     output.screenUV = float2(x, y);
 
-    if (_ProjectionParams.x < 0)
+    if (_ProjectionParams.x < 0) // dx和opengl屏幕坐标原点不一致，导致y刚好是 1和 的关系
     {
         output.screenUV.y = 1 - output.screenUV.y;
     }

@@ -130,7 +130,7 @@ namespace CignalRP {
             this.cmdBuffer.SetGlobalFloat(finalDestBlendId, (float) cameraSettings.finalBlendMode.dest);
             this.cmdBuffer.SetGlobalTexture(postProcessSourceRTId1, from);
 
-            // 如果不设置SetViewport，那么后camera的画面会覆盖前camera的画面，即使后camera设置来正确的rt的size,但是会将这个size的画面铺满整个camera
+            // 如果不设置SetViewport，那么后camera的画面会覆盖前camera的画面，即使后camera设置了正确的rt的size,但是会将这个size的画面铺满整个camera
             // 不是是屏幕映射阶段。所以需要设置正确的viewport
             this.cmdBuffer.SetViewport(camera.pixelRect);
             // blend的时候,需要从framebuffer中加载colorbuffer, 所以Load

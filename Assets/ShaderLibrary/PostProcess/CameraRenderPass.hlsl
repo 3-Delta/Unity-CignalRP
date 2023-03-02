@@ -3,7 +3,7 @@
 
 // 功能类似于blit
 
-TEXTURE2D(_SourceTexture);
+TEXTURE2D(_SourceRT);
 
 struct Varyings
 {
@@ -32,13 +32,15 @@ Varyings DefaultVertex(uint vertexID : SV_VertexID)
 
 float4 CopyColorFragment(Varyings input) : SV_TARGET
 {
-    float4 color = SAMPLE_TEXTURE2D_LOD(_SourceTexture, sampler_linear_clamp, input.screenUV, 0);
+    // 用linear的插值方式
+    float4 color = SAMPLE_TEXTURE2D_LOD(_SourceRT, sampler_linear_clamp, input.screenUV, 0);
     return color;
 }
 
 float CopyDepthFragment(Varyings input) : SV_TARGET
 {
-    float4 color = SAMPLE_TEXTURE2D_LOD(_SourceTexture, sampler_point_clamp, input.screenUV, 0);
+    // 用point方式，不对depth进行插值，这也就是不支持MSAA的原因
+    float4 color = SAMPLE_TEXTURE2D_LOD(_SourceRT, sampler_point_clamp, input.screenUV, 0);
     return color;
 }
 

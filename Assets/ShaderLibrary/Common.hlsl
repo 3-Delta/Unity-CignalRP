@@ -22,21 +22,40 @@
 
 bool IsOrthoCamera()
 {
-    return unity_OrthoParams.w;
+    return unity_OrthoParams.w; // 如果是正交相机，w为1，否则0
 }
 
-// depth [0, 1], 0是近裁剪面,1是远裁剪面
+// zSS [0, 1], 0是近裁剪面,1是远裁剪面, zCS是距离近裁剪面的距离，不是距离相机的距离，zVS则是距离相机的距离
 // [-1, 1]的情况下,-1是近裁剪面,1是远裁剪面
 // 是Zndc[-1, 1]然后 +1/2存储的纹理depth[0, 1]
 // 从到近平面的距离 转换为 到相机的距离
-float OrthoDepthBufferToLinear(float depth)
+float OrthoDepthBufferToLinear(float zSS) // zCS,zSS其实就是zCS, 因为正交的w始终为1,而zCS是距离近裁剪面的距离
 {
 #if UNITY_REVERSED_Z
-    depth = 1.0 - depth;
+    zSS = 1.0 - zSS;
 #endif
+    // _ProjectionParams参数意义:  y,near, z, far, w = 1+1/far
     float near = _ProjectionParams.y;
     float far = _ProjectionParams.z;
-    return (far - near) * depth + near;
+    return (far - near) * zSS + near;
+}
+
+// 视图空间下的depth
+float GetFragZVS(float4 fragPositionSS) // fragPositionSS是屏幕空间坐标
+{
+    // ss空间其实是引擎自动从cs空间转换来的，ss.z是cs.z插值来的， ss.z是距离近裁剪面的距离，不是距离相机的距离
+    // 正交投影矩阵的ss.w永远为1,所以透视除法之后和原来一样, 所以ss.z不能正确表达depth
+    // 透视的ss.w则是-vs.z
+    // <shader入门精要> P.79
+    float zVS = IsOrthoCamera() ? OrthoDepthBufferToLinear(fragPositionSS.z) : fragPositionSS.w;
+    return zVS;
+}
+
+// 视图空间下的depth
+float GetFragZVS(float zSS)
+{
+    float zVS = IsOrthoCamera() ? OrthoDepthBufferToLinear(zSS) : LinearEyeDepth(zSS, _ZBufferParams);
+    return zVS;
 }
 
 SAMPLER(sampler_linear_clamp);

@@ -37,11 +37,11 @@ struct InputConfig
     Fragment fragment;
 };
 
-InputConfig GetInputConfig(float4 positionSS, float2 baseUV)
+InputConfig GetInputConfig(float4 fragPositionSS, float2 baseUV)
 {
     InputConfig c;
     c.baseUV = baseUV;
-    c.fragment = GetFragment(positionSS);
+    c.fragment = GetFragment(fragPositionSS);
     return c;
 }
 

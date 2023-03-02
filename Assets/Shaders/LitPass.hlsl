@@ -54,6 +54,8 @@ Varyings LitPassVertex(Attributes input)
 float4 LitPassFragment(Varyings input) : SV_Target
 {
     UNITY_SETUP_INSTANCE_ID(input);
+    // positionCS_SS在顶点着色器中是cs位置，但是在片元着色器中就是ss位置，因为顶点着色器之后的流程，引擎会自动将cs位置转换为屏幕位置
+    // 屏幕位置就是左下为(0, 0)， size为1的viewport空间
     InputConfig config = GetInputConfig(input.positionCS_SS, input.baseUV);
     float4 base = GetBase(config);
 
@@ -88,8 +90,8 @@ float4 LitPassFragment(Varyings input) : SV_Target
     // realtime光 + gi光
     float3 color = GetLighting(surface, brdf, gi);
     
-    // 其实自发光在meta中已经贡献了一部分GI，这里继续贡献一部分非GI
-    // 最后添加自发光
+    // 其实自发光在meta中已经贡献了一部分GI，会给周边投射自己的光线形成GI
+    // 这里继续贡献一部分非GI
     color += GetEmission(config);
     return float4(color, GetFinalAlpha(surface.alpha));
 }
