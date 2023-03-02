@@ -44,8 +44,8 @@ namespace CignalRP {
         private static bool copyTextureSupported = SystemInfo.copyTextureSupport > CopyTextureSupport.None;
 
         private bool useInterBuffer = false;
-        private bool useColorTexture = false;
-        private bool useDepthTexture = false;
+        private bool useColorRT = false;
+        private bool useDepthRT = false;
         public static readonly int CameraColorRTId = Shader.PropertyToID("_CameraColorRT");
         public static readonly int CameraDepthRTId = Shader.PropertyToID("_CameraDepthRT");
 
@@ -93,24 +93,24 @@ namespace CignalRP {
             bool cameraRenderShadow = true;
             if (camera.TryGetComponent(out cameraIni)) {
                 cameraRenderShadow = cameraIni.cameraSettings.renderShadow;
-                if (cameraIni.cameraSettings.rendererFrequency <= 0) {
-                    cameraIni.cameraSettings.rendererFrequency = -1;
+                if ((int)cameraIni.cameraSettings.rendererFrequency <= 0) {
+                    cameraIni.cameraSettings.rendererFrequency = CameraSettings.ECameraFrameFrequency.Very;
                 }
 
-                if (cameraIni.cameraSettings.rendererFrequency != -1) {
-                    if (Time.frameCount % cameraIni.cameraSettings.rendererFrequency == 0) {
-                        return;
-                    }
-                }
+                //if (cameraIni.cameraSettings.rendererFrequency != CameraSettings.ECameraFrameFrequency.Very) {
+                //    if ((Time.frameCount % (int)cameraIni.cameraSettings.rendererFrequency) == 0) {
+                //        return;
+                //    }
+                //}
             }
 
             if (camera.cameraType == CameraType.Reflection) {
-                useColorTexture = cameraBufferSettings.copyColorReflection;
-                useDepthTexture = cameraBufferSettings.copyDepthReflection;
+                useColorRT = cameraBufferSettings.copyColorReflection;
+                useDepthRT = cameraBufferSettings.copyDepthReflection;
             }
             else {
-                useColorTexture = cameraBufferSettings.copyColor && cameraSettings.copyColor;
-                useDepthTexture = cameraBufferSettings.copyDepth && cameraSettings.copyDepth;
+                useColorRT = cameraBufferSettings.copyColor && cameraSettings.copyColor;
+                useDepthRT = cameraBufferSettings.copyDepth && cameraSettings.copyDepth;
             }
 
             float renderScale = cameraSettings.GetRenderScale(cameraBufferSettings.renderScale);
@@ -130,10 +130,11 @@ namespace CignalRP {
             else if (camera.cameraType == CameraType.SceneView) {
                 this.allowHDR = cameraBufferSettings.allowHDR && SceneView.currentDrawingSceneView.sceneViewState.showImageEffects;
             }
-            else {
+#endif
+            else
+            {
                 this.allowHDR = false;
             }
-#endif
             if (useRenderScale) {
                 renderScale = Mathf.Clamp(renderScale, 0.1f, 2f);
                 renderSize.x = (int)(camera.pixelWidth * renderScale);
@@ -171,7 +172,7 @@ namespace CignalRP {
             //    Nothing = 4
             // }
             CameraClearFlags flags = this.camera.clearFlags;
-            useInterBuffer = useColorTexture || useDepthTexture || useRenderScale || postProcessStack.IsActive;
+            useInterBuffer = useColorRT || useDepthRT || useRenderScale || postProcessStack.IsActive;
             if (useInterBuffer) {
                 // 后效开启时,在渲染每个camera的时候,都强制cleardepth,clearcolor, 否则多个camera的内容会叠加
                 if (flags > CameraClearFlags.Color) {
@@ -179,7 +180,9 @@ namespace CignalRP {
                 }
 
                 RenderTextureFormat format = allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
+                // color无深度信息，所以0
                 this.cmdBuffer.GetTemporaryRT(CameraColorAttachmentId, renderSize.x, renderSize.y, 0, FilterMode.Bilinear, format);
+                // depth无颜色，所以RenderTextureFormat.Depth
                 this.cmdBuffer.GetTemporaryRT(CameraDepthAttachmentId, renderSize.x, renderSize.y, 32, FilterMode.Point, RenderTextureFormat.Depth);
 
                 // 设置之后，zwite on的ztest pass物体就会写入CameraDepthAttachmentId
@@ -206,6 +209,7 @@ namespace CignalRP {
             // ClearRendererTarget会自动收缩在CmdBufferName下面,所以要给设置一个cmdBuffer.name
             this.cmdBuffer.ClearRenderTarget(clearDepth, clearColor, bgColor);
 
+            // 设置默认的color/depth RT
             cmdBuffer.SetGlobalTexture(CameraColorRTId, missingRT);
             cmdBuffer.SetGlobalTexture(CameraDepthRTId, missingRT);
             CmdBufferExt.Execute(ref context, cmdBuffer);
@@ -254,7 +258,7 @@ namespace CignalRP {
         private void PreDraw(ShadowSettings shadowSettings, bool usePerObjectLights, CameraBufferSettings cameraBufferSettings) {
             // 设置光源,阴影信息, 内含shadowmap的渲染， 所以需要在正式的相机参数等之前先渲染， 否则放在函数最尾巴，则渲染为一片黑色
             this.lighting.Setup(ref this.context, ref this.cullingResults, shadowSettings, usePerObjectLights,
-                cameraSettings.toMaskLights ? cameraSettings.cameraLayerMask : -1);
+                cameraSettings.toMaskLights ? cameraSettings.cameraLayerMask : CameraSettings.ALL_RENDER_LAYER);
             this.postProcessStack.Setup(ref this.context, this.camera, renderSize, this.postProcessSettings, allowHDR, cameraBufferSettings.bicubicRescaleMode);
 
             // 设置vp矩阵给shader的unity_MatrixVP属性，在Framedebugger中选中某个dc可看
@@ -287,11 +291,11 @@ namespace CignalRP {
                 this.cmdBuffer.ReleaseTemporaryRT(CameraDepthAttachmentId);
                 
                 // CopyAttachments有可能申请
-                if (useColorTexture) {
+                if (useColorRT) {
                     this.cmdBuffer.ReleaseTemporaryRT(CameraColorRTId);
                 }
 
-                if (useDepthTexture) {
+                if (useDepthRT) {
                     this.cmdBuffer.ReleaseTemporaryRT(CameraDepthRTId);
                 }
             }
@@ -306,9 +310,18 @@ namespace CignalRP {
             }
 
             // step1: 绘制不透明物体
+            // CommonOpaque = SortingLayer | RenderQueue | OptimizeStateChanges | CanvasOrder | QuantizedFrontToBack
+            SortingCriteria yesFrontToBackOpaqueFlags = SortingCriteria.CommonOpaque;
+            // 少个了QuantizedFrontToBack， 也就是从前到后的cpu物体排序， 最终按照hsr处理
+            SortingCriteria noFrontToBackOpaqueFlags = SortingCriteria.SortingLayer | SortingCriteria.RenderQueue | SortingCriteria.OptimizeStateChanges | SortingCriteria.CanvasOrder;
+
+            bool hasHSRGPU = SystemInfo.hasHiddenSurfaceRemovalOnGPU;
+            bool canSkipFrontToBackSorting = (camera.opaqueSortMode == OpaqueSortMode.Default && hasHSRGPU) || camera.opaqueSortMode == OpaqueSortMode.NoDistanceSort;
+            // hsr影响最终的opaque物体的排序方式
+            var sortingCriteria = canSkipFrontToBackSorting ? noFrontToBackOpaqueFlags : yesFrontToBackOpaqueFlags;
+
             var sortingSettings = new SortingSettings() {
-                // todo 设置lightmode的pass以及物体排序规则， 是否可以利用GPU的hsr规避这里的排序？？？
-                criteria = SortingCriteria.CommonOpaque
+                criteria = sortingCriteria
             };
             var drawingSettings = new DrawingSettings(UnlitShaderTagId, sortingSettings) {
                 enableDynamicBatching = useDynamicBatching,
@@ -339,7 +352,7 @@ namespace CignalRP {
             this.context.DrawSkybox(this.camera);
 
             // 绘制完不透明以及天空盒(也是不透明方式绘制)之后，缓存color以及depth
-            if (useColorTexture || useDepthTexture) {
+            if (useColorRT || useDepthRT) {
                 CopyAttachments();
             }
 
@@ -356,7 +369,7 @@ namespace CignalRP {
         #endregion
 
         private void CopyAttachments() {
-            if (useColorTexture) {
+            if (useColorRT) {
                 // 重新配置CameraColorRTId的宽高等属性
                 cmdBuffer.GetTemporaryRT(CameraColorRTId, renderSize.x, renderSize.y, 0, FilterMode.Bilinear, allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default);
                 if (copyTextureSupported) {
@@ -368,7 +381,7 @@ namespace CignalRP {
                 }
             }
 
-            if (useDepthTexture) {
+            if (useDepthRT) {
                 cmdBuffer.GetTemporaryRT(CameraDepthRTId, renderSize.x, renderSize.y, 32, FilterMode.Point, RenderTextureFormat.Depth);
                 if (copyTextureSupported) {
                     cmdBuffer.CopyTexture(CameraDepthAttachmentId, CameraDepthRTId);

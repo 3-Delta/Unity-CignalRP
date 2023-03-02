@@ -18,7 +18,16 @@ namespace CignalRP
             public BlendMode src, dest;
         }
 
-        [Header("相机渲染帧率")] public int rendererFrequency = -1;
+        public enum ECameraFrameFrequency { 
+            Low15 = 15,
+            Mid30 = 30,
+            High60 = 60,
+            Very = -1,
+            //Default = Low,
+            //ByDeviceQuality = 1,
+        }
+
+        [Header("相机渲染帧率")] public ECameraFrameFrequency rendererFrequency = ECameraFrameFrequency.Very;
 
         [Header("后处理")] public bool enablePostProcess = true;
         public bool overridePostProcess = false;
@@ -34,7 +43,8 @@ namespace CignalRP
         [Header("光影")]
         public bool renderShadow = true;
         public bool toMaskLights = false; // 相机layermask是否影响光源
-        [RenderingLayerMaskField] public int cameraLayerMask = -1; // 默认everything
+        public const int ALL_RENDER_LAYER = -1;
+        [RenderingLayerMaskField] public int cameraLayerMask = ALL_RENDER_LAYER; // 默认everything
 
         public enum ERenderScaleMode
         {
