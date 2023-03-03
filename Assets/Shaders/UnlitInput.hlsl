@@ -36,7 +36,7 @@ struct InputConfig
     float4 color;
 
     float3 flipBookUVB;
-    bool useFlipBookBlend;
+    bool useFlipBookBlend; // 序列帧粒子动画
 
     Fragment fragment;
     bool nearFade;
@@ -66,23 +66,30 @@ float2 TransformBaseUV(float2 baseUV)
 float4 GetBase(InputConfig input)
 {
     float4 texelColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.baseUV);
-    if(input.useFlipBookBlend)
+    if(input.useFlipBookBlend) // 序列帧粒子动画, 因为是同一张纹理中有n*n的子图，比如爆炸图，所以render知道当前的uv和上一次的uv
     {
         float4 preTexelColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.flipBookUVB.xy);
         texelColor = lerp(texelColor, preTexelColor, input.flipBookUVB.z);
     }
     
-    if(input.nearFade)
+    if(input.nearFade) // 距离相位置一定距离,开始fade， 而不是距离相机近平面一定距离
     {
-        float nearAttenuation = (input.fragment.zVS - GetInputProp(_NearFadeDistance)) / GetInputProp(_NearFadeRange);
+        float diff = (input.fragment.zVS - GetInputProp(_NearFadeDistance));
+        float nearAttenuation = diff / GetInputProp(_NearFadeRange);
+        // 随着zVS变化，修改alpha
         texelColor.a = saturate(nearAttenuation);
     }
 
+    // 软粒子 https://zhuanlan.zhihu.com/p/347081329
+    // 粒子系统用来渲染烟雾、灰尘、火焰和爆炸等体积效果，通常通过使用alpha混合多层和屏幕对齐的方块纹理来实现，但有个缺陷是当方块和几何体相交时会造成明显接缝。软粒子就是用来隐藏接缝的技术，技术原理是对深度缓存采样然后在粒子接近几何体时使粒子衰退，从而造成无缝的效果。
+    // 为什么有接缝：粒子在opaque之前则展示粒子和opaque的blend效果，否则展示opaque，这自然会在粒子和opaque接触的边缘有明显接缝
+    // 为了渐变这个接缝，可以把在opaque之前的粒子按照距离opaque的距离远近修改粒子的alpha，越靠近opaque则alpha越小即可
     if(input.softParticles)
     {
         float depthDelta = input.fragment.zbufferVS - input.fragment.zVS;
         float nearAttenuation = (depthDelta - GetInputProp(_SoftParticlesDistance)) / GetInputProp(_SoftParticlesRange);
-        texelColor.a = saturate(nearAttenuation);
+        // frag的z和zbuffer越接近，alpha越小
+        texelColor.a *= saturate(nearAttenuation);
     }
     
     float4 color = GetInputProp(_BaseColor);
