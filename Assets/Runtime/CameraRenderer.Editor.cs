@@ -52,7 +52,7 @@ namespace CignalRP {
         private void DrawGizmosBeforeFX() {
             if (Handles.ShouldRenderGizmos()) {
                 if (useInterBuffer) {
-                    DrawCopy(CameraDepthAttachmentId, BuiltinRenderTextureType.CameraTarget, ECopyET.CopyDepth);
+                    DrawCopy(CameraDepthAttachmentId, BuiltinRenderTextureType.CameraTarget, ECopyRT.CopyDepth);
                     CmdBufferExt.Execute(ref context, cmdBuffer);
                 }
 

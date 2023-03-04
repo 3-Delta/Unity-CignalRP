@@ -1,4 +1,5 @@
-﻿using Unity.Collections;
+﻿using System;
+using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Experimental.GlobalIllumination;
 using UnityEngine.Rendering;
@@ -34,11 +35,26 @@ namespace CignalRP {
             InitForEditor();
         }
 
-        protected override void Render(ScriptableRenderContext context, Camera[] cameras) {
-            for (int i = 0, length = cameras.Length; i < length; ++i) {
-                cameraRenderer.Render(ref context, cameras[i], useDynamicBatching,
-                    useGPUInstancing, shadowSettings, postProcessSettings, cameraBufferSettings, usePerObjectLights);
+        Comparison<Camera> cameraComparison = (camera1, camera2) => { return (int) camera1.depth - (int) camera2.depth; };
+        private void SortCameras(Camera[] cameras)
+        {
+            if (cameras.Length > 1) {
+                Array.Sort(cameras, cameraComparison);
             }
+        }
+        
+        protected override void Render(ScriptableRenderContext context, Camera[] cameras) {
+            SortCameras(cameras);
+            
+            BeginFrameRendering(context, cameras);
+            for (int i = 0, length = cameras.Length; i < length; ++i) {
+                var cam = cameras[i];
+                
+                BeginCameraRendering(context, cam);
+                cameraRenderer.Render(ref context, cam, useDynamicBatching, useGPUInstancing, shadowSettings, postProcessSettings, cameraBufferSettings, usePerObjectLights);
+                EndCameraRendering(context, cam);
+            }
+            EndFrameRendering(context, cameras);
         }
     }
 

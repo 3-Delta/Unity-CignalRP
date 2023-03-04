@@ -8,7 +8,7 @@ using UnityEngine.Rendering;
 namespace CignalRP {
     // 负责单个相机的渲染
     public partial class CameraRenderer {
-        public enum ECopyET {
+        public enum ECopyRT {
             CopyColor = 0,
             CopyDepth = 1,
         }
@@ -381,7 +381,7 @@ namespace CignalRP {
                 }
                 else {
                     // webgl有的不支持CopyTexture，所以只能低效的DrawCopy，类似blit
-                    DrawCopy(CameraColorAttachmentId, CameraColorRTId, ECopyET.CopyColor);
+                    DrawCopy(CameraColorAttachmentId, CameraColorRTId, ECopyRT.CopyColor);
                 }
             }
 
@@ -391,7 +391,7 @@ namespace CignalRP {
                     cmdBuffer.CopyTexture(CameraDepthAttachmentId, CameraDepthRTId);
                 }
                 else {
-                    DrawCopy(CameraDepthAttachmentId, CameraDepthRTId, ECopyET.CopyDepth);
+                    DrawCopy(CameraDepthAttachmentId, CameraDepthRTId, ECopyRT.CopyDepth);
                 }
             }
 
@@ -404,7 +404,7 @@ namespace CignalRP {
             CmdBufferExt.Execute(ref context, cmdBuffer);
         }
 
-        private void DrawCopy(RenderTargetIdentifier from, RenderTargetIdentifier to, ECopyET copyMode) {
+        private void DrawCopy(RenderTargetIdentifier from, RenderTargetIdentifier to, ECopyRT copyMode) {
             cmdBuffer.SetGlobalTexture(sourceTextureId, from);
             cmdBuffer.SetRenderTarget(to, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             int passIndex = (int)copyMode;
