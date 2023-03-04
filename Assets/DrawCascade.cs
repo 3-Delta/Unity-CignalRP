@@ -3,8 +3,8 @@ using UnityEngine.Rendering;
 using CignalRP;
 using Unity.Collections;
 
-#if UNITY_EDITOR
 public class DrawCascade : CameraRenderTrigger {
+#if UNITY_EDITOR
     public ShadowSettings shadowSettings;
 
     public Camera cam;
@@ -79,5 +79,5 @@ public class DrawCascade : CameraRenderTrigger {
         this.context = context;
         hasInitContext = true;
     }
-}
 #endif
+}
