@@ -373,6 +373,7 @@ namespace CignalRP {
             cullingSphere.w *= cullingSphere.w;
             cascadeCullingSpheres[cascadeIndex] = cullingSphere;
 
+            // https://zhuanlan.zhihu.com/p/379042993
             cascadeData[cascadeIndex] = new Vector4(1f / cullingSphere.w, pcfFilterSize * 1.4142136f);
         }
 
