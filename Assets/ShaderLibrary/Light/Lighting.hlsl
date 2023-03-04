@@ -34,7 +34,9 @@ bool RenderingMayerOverlap(FragSurface surface, Light light)
 
 float3 GetLighting(FragSurface surface, BRDF brdf, GI gi)
 {
-    ShadowData globalShadowData = GetShadowData(surface);
+    ShadowData globalShadowData = GetShadowData(surface); // 获取实时阴影衰减等参数
+
+    // 获取烘焙阴影参数
     // shadowData的gi ShadowMask = gi的shadowmask 
     globalShadowData.shadowMask = gi.shadowMask;
 

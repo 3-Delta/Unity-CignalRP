@@ -34,8 +34,11 @@ SAMPLER(samplerunity_SpecCube0);
 
 struct GI
 {
+    // 静态物体 lightmap
     float3 diffuse; // 漫反射颜色, gi都是漫反射, 因为间接光照的光源位置不固定. 高光反射都是lightprobo提供
     float3 specular; // 镜面反射
+
+    // 静态物体 shadowMask
     ShadowMask shadowMask;
 };
 
@@ -108,6 +111,7 @@ float4 SampleBakedShadow(float2 lightmapUV, FragSurface surface)
 #endif
 }
 
+// gi 高光
 float3 SampleEnvironment(FragSurface surface, BRDF brdf)
 {
     float3 uvw = reflect(-surface.viewDirectionWS, surface.normalWS);
@@ -116,15 +120,17 @@ float3 SampleEnvironment(FragSurface surface, BRDF brdf)
     return DecodeHDREnvironment(environment, unity_SpecCube0_HDR);
 }
 
+// 当没有GI的时候，光线就会不真实，数值上来说这里返回的是0
 GI GetGI(float2 lightmapUV, FragSurface surface, BRDF brdf)
 {
     GI gi;
     // 获取间接光的diffuse，间接光可以当做一个临时的直接光处理
-    gi.diffuse = SampleLightmap(lightmapUV);
-    gi.diffuse += SampleLightProbe(surface);
+    gi.diffuse = SampleLightmap(lightmapUV); // 静态物体lightmap
+    gi.diffuse += SampleLightProbe(surface); // 动态物体lightprobe
 
-    gi.specular = SampleEnvironment(surface, brdf);
+    gi.specular = SampleEnvironment(surface, brdf); // 高光
 
+    // 烘焙阴影
     gi.shadowMask.isDistance = false;
     gi.shadowMask.isAlways = false;
     gi.shadowMask.shadow = 1.0;

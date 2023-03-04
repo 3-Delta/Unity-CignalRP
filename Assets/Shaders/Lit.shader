@@ -56,7 +56,8 @@
 			#pragma multi_compile _ _DIRECTIONAL_PCF3 _DIRECTIONAL_PCF5 _DIRECTIONAL_PCF7
             #pragma multi_compile _ _OTHER_PCF3 _OTHER_PCF5 _OTHER_PCF7
 
-            // lightmap
+            // lightmap, 静态物体的该宏会生效，动态物体不生效， 也就是物体的Renderer组件上启用了Lightmap Static属性时，该物体就可以使用Lightmap
+            // 这可以区别lightmap和lightprobe
 			#pragma multi_compile _ LIGHTMAP_ON
 
             // shadowmask

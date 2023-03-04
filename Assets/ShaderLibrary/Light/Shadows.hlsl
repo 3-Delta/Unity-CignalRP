@@ -260,36 +260,45 @@ float GetBakedShadow(ShadowMask shadowMask, int channel)
     return shadow;
 }
 
-float GetBakedShadow(ShadowMask shadowMask, int channel, float strength)
+float GetBakedShadow(ShadowMask shadowMask, int channel, float realTimeLightShadowStrength)
 {
     float shadow = 1.0;
     if (shadowMask.isDistance || shadowMask.isAlways)
     {
-        shadow = lerp(1.0, GetBakedShadow(shadowMask, channel), strength);
+        shadow = lerp(1.0, GetBakedShadow(shadowMask, channel), realTimeLightShadowStrength);
     }
     return shadow;
 }
 
-float MixBakedAndRealTimeShadow(ShadowData globalShadowData, float realTimeShadow, int channel, float shadowStrength)
+// 混合某个片元的阴影
+// 片元不受阴影，返回1
+float MixBakedAndRealTimeShadow(ShadowData globalShadowData, float realTimeShadow, int channel, float realTimeLightShadowStrength)
 {
     float bakedShadow = GetBakedShadow(globalShadowData.shadowMask, channel);
+    // distanceStrength其实是受到MaxShadowDistance和CullSphere影响的一个阴影强度
+    float distanceStrength = globalShadowData.GetStrength();
+    
     if (globalShadowData.shadowMask.isAlways)
     {
-        realTimeShadow = lerp(1.0, realTimeShadow, globalShadowData.GetStrength());
+        realTimeShadow = lerp(1.0, realTimeShadow, distanceStrength);
         // always下，只是检验一下min,没有和bake进行fade
         // todo
         float shadow = min(bakedShadow, realTimeShadow);
-        return lerp(1.0, shadow, shadowStrength);
+        return lerp(1.0, shadow, realTimeLightShadowStrength);
     }
 
     if (globalShadowData.shadowMask.isDistance)
     {
-        // lerp的过程中处理了超过maxDistance的时候的shadow的情乱
-        realTimeShadow = lerp(bakedShadow, realTimeShadow, globalShadowData.GetStrength());
-        return lerp(1.0, realTimeShadow, shadowStrength);
+        // lerp的过程中处理了超过maxDistance的时候的shadow的情况
+        // 如果在maxShadowDistance或cullPhere之外，则distanceStrength为0，此时当前片元必然应该都是shadowmask的烘焙阴影，也就是bakedShadow
+        // 如果在maxShadowDistance和cullPhere之内，则distanceStrength为1，此时当前片元必然应该都是从shadowmap采样的实时阴影，也就是realTimeShadow
+        realTimeShadow = lerp(bakedShadow, realTimeShadow, distanceStrength);
+
+        // 阴影强度越小，则衰减越小，强度为0时，肯定当前片元完全不受阴影阴影，所以返回1
+        return lerp(1.0, realTimeShadow, realTimeLightShadowStrength);
     }
 
-    return lerp(1.0, realTimeShadow, shadowStrength * globalShadowData.GetStrength());
+    return lerp(1.0, realTimeShadow, realTimeLightShadowStrength * distanceStrength);
 }
 
 // 采样到shadowmap之后,还需要考虑shadowstrength的影响,其实strength==0的时候,可以不生成shadowmap的,这样子节省
@@ -319,7 +328,7 @@ float GetDirectionalShadowAttenuation(DirectionalShadowData dirShadowData, Shado
 float GetOtherShadowAttenuation(OtherShadowData other, ShadowData globalShadowData, FragSurface surface)
 {
     #if !defined(_RECEIVE_SHADOWS)
-    return 1.0;
+        return 1.0;
     #endif
 
     float shadow;

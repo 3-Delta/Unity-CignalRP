@@ -5,7 +5,8 @@
 1. 尽可能使用同一个相机渲染 场景和UI
 2. normalbias推近多少合适？
 3. 为什么使用hdr时候，会对于gamma/linear有影响？也就是会导致画面变暗？
-4. 为什么shadowmask下 min(bakedShadow, realTimeShadow);是这种实现方式?而且是lerp(1)开始?
+4. 为什么shadowmask下 min(bakedShadow, realTimeShadow);是这种实现方式?
+5. 为什么shadowmask下是lerp(1)开始? 因为采样的阴影其实最终在计算光影的时候(IncomingLight)都是转换为衰减做 乘法 计算的，某个片元完全在阴影中，则衰减为0，最终颜色就比较黑，不在阴影之内的片元，则衰减为1，意味着衰减越高颜色越亮。用阴影强度和衰减来说的话，就是强度越低衰减越高.代码中根据强度返回衰减，自然是Lerp(1)
 
 
 学习资料:

@@ -67,7 +67,7 @@ float4 LitPassFragment(Varyings input) : SV_Target
     FragSurface surface;
     surface.positionWS = input.positionWS;
 #if defined(_NORMAL_MAP)
-    surface.normal = NormalTangentToWorld(GetNormalTS(config), input.normalWS, input.tangentWS);
+    surface.normalWS = NormalTangentToWorld(GetNormalTS(config), input.normalWS, input.tangentWS);
     surface.interpolatedNormal = input.normalWS;
 #else
     surface.normalWS = normalize(input.normalWS);
@@ -82,7 +82,8 @@ float4 LitPassFragment(Varyings input) : SV_Target
     surface.fresnalStrength = GetFresnal(config);
     surface.meshRenderingLayerMask = asuint(unity_RenderingLayer.x);
 
-    // 填充BRDF
+    // 填充BRDF， brdf是用来计算直接光的，
+    // 间接光其实是通过烘焙来的，烘焙的时候会使用brdf计算漫反射
     BRDF brdf = GetBRDF(surface);
     
     GI gi = GetGI(GI_FRAGMENT_DATA(input), surface, brdf);
