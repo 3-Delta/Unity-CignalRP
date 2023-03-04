@@ -12,6 +12,7 @@ namespace CignalRP {
         private bool useDynamicBatching;
         private bool useGPUInstancing;
 
+        // 将影响某个物体的光源列表传入GPU，而不是所有的光源全部传入
         private bool usePerObjectLights;
 
         private CameraBufferSettings cameraBufferSettings;

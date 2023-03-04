@@ -86,6 +86,7 @@ namespace CignalRP {
             "_OTHER_PCF7",
         };
 
+        // 阴影平坠适用于正交矩阵
         private static readonly int shadowPancakingId = Shader.PropertyToID("_ShadowPancaking");
 
         private static readonly int otherLightShadowAtlasId = Shader.PropertyToID("_OtherLightShadowAtlas");
@@ -269,7 +270,7 @@ namespace CignalRP {
             cmdBuffer.GetTemporaryRT(otherLightShadowAtlasId, atlasSize, atlasSize, 32, FilterMode.Bilinear, RenderTextureFormat.Shadowmap);
             cmdBuffer.SetRenderTarget(otherLightShadowAtlasId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             cmdBuffer.ClearRenderTarget(true, false, Color.clear);
-            // shadowpancaking只在平行光影响，因为平行光阴影是正交相机
+            // shadowpancaking只在平行光影响，因为平行光阴影是虚拟正交相机
             cmdBuffer.SetGlobalFloat(shadowPancakingId, 0f);
 
             CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.Begin, ProfileName);

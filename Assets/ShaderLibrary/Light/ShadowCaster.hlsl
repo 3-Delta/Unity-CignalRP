@@ -28,6 +28,8 @@ Varyings ShadowCasterPassVertex(Attributes input)
     // 阴影平坠其实是为了尽可能的减少光源位置的虚拟相机的视锥体的近裁剪和远裁剪的距离，也就是尽量让近裁剪靠近远裁剪
     // 这就可能导致一些长条形物体的z不被渲染到shadowmap中,但是正常camera中却会渲染该物体。
     // 最终导致该物体看起来没有投射阴影，或者投射了不完整的阴影
+
+    // 阴影平坠适用于正交矩阵
     if(_ShadowPancaking)
     {
 #if UNITY_REVERSED_Z

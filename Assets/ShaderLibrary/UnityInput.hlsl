@@ -49,7 +49,7 @@ CBUFFER_START(UnityPerDraw)
 	// reflectionProbe
 	float4 unity_SpecCube0_HDR;
 
-	// 逐像素光源
+	// 逐对象光源， 也就是某个物体受到哪些光照影响就计算哪些光照的结果，而不是计算所有光照的结果
 	real4 unity_LightData; // y:灯光数量
 	real4 unity_LightIndices[2]; // 共支持8个光源,每个是一个otherLightIndex
 

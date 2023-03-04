@@ -47,7 +47,7 @@ float3 GetLighting(FragSurface surface, BRDF brdf, GI gi)
     float3 giColor = IndirectBRDF(surface, brdf, gi.diffuse, gi.specular);
     color += giColor;
 
-    /* realtime */
+    /* realtime 平行光*/
     // 一个片元受到多个光照影响，就是color叠加
     for(int i = 0, dirLightCount = GetDirectionalLightCount(); i < dirLightCount; ++ i)
     {
@@ -58,7 +58,12 @@ float3 GetLighting(FragSurface surface, BRDF brdf, GI gi)
         }
     }
 
+    /* realtime 非平行光*/
     #if defined(_LIGHTS_PER_OBJECT)
+        // 逐对象光源， 也就是某个物体受到哪些光照影响就计算哪些光照的结果，而不是计算所有光照的结果
+        // 相比else内部的计算，每个片元会少一些otherlight的计算
+
+        // 最多支持2个real4, 也就是8
         for (int i = 0; i < min(unity_LightData.y, 8); ++ i)
         {
             int lightIndex = unity_LightIndices[(uint)i / 4][(uint)i % 4];
