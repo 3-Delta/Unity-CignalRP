@@ -88,7 +88,7 @@ BRDF GetBRDF(FragSurface surface)
 // 高光强度，根据视角方向和反射方向的平行程度，有具体公式
 float SpecularStrength(FragSurface surface, BRDF brdf, Light light)
 {
-    float3 h = SafeNormalize(light.fragToLightDirectionWS + surface.viewDirectionWS);
+    float3 h = SafeNormalize(light.fragToLightDirectionWS + surface.frag2CameraWS);
     float nh2 = Square(saturate(dot(surface.normalWS, h)));
     float lh2 = Square(saturate(dot(light.fragToLightDirectionWS, h)));
     float r2 = Square(brdf.roughness);
@@ -123,12 +123,15 @@ float3 DirectBRDF(FragSurface surface, BRDF brdf, Light light)
     #endif
 }
 
+// 环境光是怎么作用在surface的
 float3 IndirectBRDF(FragSurface surface, BRDF brdf, float3 giDiffuse, float3 giSpecular)
 {
-    float NDotV = dot(surface.normalWS, surface.viewDirectionWS);
+    float NDotV = dot(surface.normalWS, surface.frag2CameraWS);
     float fresnalStrength = surface.fresnalStrength * Pow4(1.0 - saturate(NDotV));
+
+    // 高光 乘 高光， 如果没有菲涅尔的话是：giSpecular * brdf.specular
     float3 reflection = giSpecular * lerp(brdf.specular, brdf.fresnal, fresnalStrength);
-    reflection /= brdf.roughness * brdf.roughness + 1.0;
+    reflection /= (brdf.roughness * brdf.roughness + 1.0);
     
     // 这里为甚两个diffuse相乘？因为brdf的diffuse其实是frag属性，giDiffuse其实是间接光属性，把间接光可以当做一个新的临时光源处理，那就需要*
     // 直接光光源怎么计算diffuse的？就是光源颜色*frag颜色*dotNL！

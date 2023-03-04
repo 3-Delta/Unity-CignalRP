@@ -75,8 +75,11 @@ float4 LitPassFragment(Varyings input) : SV_Target
 #endif
     surface.color = base.rgb;
     surface.alpha = base.a;
-    surface.viewDirectionWS = normalize(_WorldSpaceCameraPos - input.positionWS);
+    surface.frag2CameraWS = normalize(_WorldSpaceCameraPos - input.positionWS);
+
+    // surface.depthVS = config.fragment.zVS;
     surface.depthVS = -TransformWorldToView(input.positionWS).z;
+    
     surface.metallic = GetMetallic(config);
     surface.smoothness = GetSmoothness(config);
     surface.fresnalStrength = GetFresnal(config);

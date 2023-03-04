@@ -43,8 +43,10 @@ CBUFFER_START(UnityPerDraw)
 	float4 unity_ProbeVolumeSizeInv;
 	float4 unity_ProbeVolumeMin;
 
-	// shadowmask对应的动态物体的 probe
+	// shadowmask对应的动态物体的 occlusionProbe
 	float4 unity_ProbesOcclusion;
+
+	// reflectionProbe
 	float4 unity_SpecCube0_HDR;
 
 	// 逐像素光源

@@ -16,7 +16,7 @@ SAMPLER(samplerunity_ProbeVolumeSH);
 TEXTURE2D(unity_ShadowMask);
 SAMPLER(samplerunity_ShadowMask);
 
-// 间接光反射, 默认是天空盒
+// 间接光反射（高光反射）, 默认是天空盒，unity会自己决定将reflectionProbe还是skybox传递给当前片元
 TEXTURECUBE(unity_SpecCube0);
 SAMPLER(samplerunity_SpecCube0);
 
@@ -111,10 +111,11 @@ float4 SampleBakedShadow(float2 lightmapUV, FragSurface surface)
 #endif
 }
 
-// gi 高光
+// 默认情况下的反射只有skybox, 没有其他物体，为了丰富效果，需要reflectProbe
+// gi 高光, 其实是从cubemap中采样，默认是skybox
 float3 SampleEnvironment(FragSurface surface, BRDF brdf)
 {
-    float3 uvw = reflect(-surface.viewDirectionWS, surface.normalWS);
+    float3 uvw = reflect(-surface.frag2CameraWS, surface.normalWS);
     float mipmap = PerceptualRoughnessToMipmapLevel(brdf.perceptualRoughness);
     float4 environment = SAMPLE_TEXTURECUBE_LOD(unity_SpecCube0, samplerunity_SpecCube0, uvw, mipmap);
     return DecodeHDREnvironment(environment, unity_SpecCube0_HDR);
