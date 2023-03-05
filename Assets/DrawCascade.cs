@@ -10,6 +10,11 @@ public class DrawCascade : CameraRenderTrigger {
     public Camera cam;
     public Light dirLight;
 
+    public Color adjust = new Color(1f, 1f, 1f, 0.5f);
+    public Color[] colors = new Color[] {
+        Color.red, Color.green, Color.blue, Color.black
+    };
+
     private ScriptableRenderContext context;
     private CullingResults cullingResults;
 
@@ -21,6 +26,11 @@ public class DrawCascade : CameraRenderTrigger {
         int tileCount = shadowSettings.directionalShadow.cascadeCount;
         countPerLine = tileCount <= 1 ? 1 : tileCount <= 4 ? 2 : 4;
         tileSize = (int)shadowSettings.directionalShadow.shadowMapAtlasSize / countPerLine;
+
+        for (int i = 0; i < colors.Length; i++)
+        {
+            colors[i] *= adjust;
+        }
 
         hasInitContext = false;
         base.OnEnable();
@@ -64,8 +74,26 @@ public class DrawCascade : CameraRenderTrigger {
 
                 var sphere = splitData.cullingSphere;
                 var farPlane = cullingParams.GetCullingPlane(i);
-                Gizmos.DrawWireSphere(sphere, sphere.w);
-                Gizmos.DrawFrustum(cam.transform.position, cam.fieldOfView, farPlane.distance, cam.nearClipPlane, cam.aspect);
+                // 绘制裁剪球
+                var oldColor = Gizmos.color;
+                Gizmos.color = colors[i];
+                Gizmos.DrawSphere(sphere, sphere.w);
+                Gizmos.color = oldColor;
+
+                // 绘制相机整个视锥体
+                UnityEditor.CameraEditorUtils.DrawFrustumGizmo(cam);
+
+                // 绘制相机cascade视锥体
+                oldColor = Gizmos.color;
+                var oldFar = cam.farClipPlane;
+                Gizmos.color = Color.cyan;
+                cam.farClipPlane *= (i < cascadeCount - 1 ? shadowSettings.directionalShadow.cascadeRatios[i] : 1f);
+                UnityEditor.CameraEditorUtils.DrawFrustumGizmo(cam);
+                Gizmos.color = oldColor;
+                cam.farClipPlane = oldFar;
+
+                // 如何利用计算出来的viewMatrix进行绘制呢?
+                //Gizmos.DrawFrustum(cam.transform.position, cam.fieldOfView, farPlane.distance, cam.nearClipPlane, cam.aspect);
             }
         }
     }
