@@ -44,6 +44,10 @@ namespace CignalRP {
         private static bool copyTextureSupported = SystemInfo.copyTextureSupport > CopyTextureSupport.None;
 
         private bool useInterBuffer = false;
+
+        private bool allowMSAA;
+        private int msaaSample = (int)MSAASamples.None;
+
         private bool useColorRT = false;
         private bool useDepthRT = false;
         public static readonly int CameraColorRTId = Shader.PropertyToID("_CameraColorRT");
@@ -103,6 +107,9 @@ namespace CignalRP {
                 //    }
                 //}
             }
+
+            allowMSAA = camera.allowMSAA && cameraBufferSettings.allowMSAA;
+            msaaSample = allowMSAA ? cameraBufferSettings.finalMSAA : (int)MSAASamples.None;
 
             if (camera.cameraType == CameraType.Reflection) {
                 useColorRT = cameraBufferSettings.copyColorReflection;
@@ -181,9 +188,9 @@ namespace CignalRP {
 
                 RenderTextureFormat format = allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
                 // color无深度信息，所以0
-                this.cmdBuffer.GetTemporaryRT(CameraColorAttachmentId, renderSize.x, renderSize.y, 0, FilterMode.Bilinear, format);
+                this.cmdBuffer.GetTemporaryRT(CameraColorAttachmentId, renderSize.x, renderSize.y, 0, FilterMode.Bilinear, format/*, RenderTextureReadWrite.Default, msaaSample*/);
                 // depth无颜色，所以RenderTextureFormat.Depth
-                this.cmdBuffer.GetTemporaryRT(CameraDepthAttachmentId, renderSize.x, renderSize.y, 32, FilterMode.Point, RenderTextureFormat.Depth);
+                this.cmdBuffer.GetTemporaryRT(CameraDepthAttachmentId, renderSize.x, renderSize.y, 32, FilterMode.Point, RenderTextureFormat.Depth/*, RenderTextureReadWrite.Linear, msaaSample*/);
 
                 // 设置之后，zwite on的ztest pass物体就会写入CameraDepthAttachmentId
                 this.cmdBuffer.SetRenderTarget(CameraColorAttachmentId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
@@ -375,7 +382,7 @@ namespace CignalRP {
         private void CopyAttachments() {
             if (useColorRT) {
                 // 重新配置CameraColorRTId的宽高等属性
-                cmdBuffer.GetTemporaryRT(CameraColorRTId, renderSize.x, renderSize.y, 0, FilterMode.Bilinear, allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default);
+                cmdBuffer.GetTemporaryRT(CameraColorRTId, renderSize.x, renderSize.y, 0, FilterMode.Bilinear, allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default/*, RenderTextureReadWrite.Default, msaaSample*/);
                 if (copyTextureSupported) {
                     cmdBuffer.CopyTexture(CameraColorAttachmentId, CameraColorRTId);
                 }
@@ -386,7 +393,7 @@ namespace CignalRP {
             }
 
             if (useDepthRT) {
-                cmdBuffer.GetTemporaryRT(CameraDepthRTId, renderSize.x, renderSize.y, 32, FilterMode.Point, RenderTextureFormat.Depth);
+                cmdBuffer.GetTemporaryRT(CameraDepthRTId, renderSize.x, renderSize.y, 32, FilterMode.Point, RenderTextureFormat.Depth/*, RenderTextureReadWrite.Linear, msaaSample*/);
                 if (copyTextureSupported) {
                     cmdBuffer.CopyTexture(CameraDepthAttachmentId, CameraDepthRTId);
                 }

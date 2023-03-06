@@ -90,6 +90,23 @@ namespace CignalRP
         public bool copyDepthReflection;
 
         [Range(0.1f, 2f)] public float renderScale;
+
+        public bool allowMSAA {
+            get {
+                return finalMSAA > (int)MSAASamples.None;
+            }
+        }
+        public MSAASamples targetMSAA;
+
+        public int finalMSAA {
+            get {
+                // msaa最终主要是为了设置QualitySettings.antiAliasing
+                int t = QualitySettings.antiAliasing = (int)targetMSAA;
+                t = Mathf.Max(t, (int)MSAASamples.None);
+                return t;
+            }
+        }
+
         public enum EBicubicRescaleMode
         {
             Off,

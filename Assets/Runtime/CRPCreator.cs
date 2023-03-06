@@ -17,6 +17,7 @@ namespace CignalRP {
         [Header("后处理")] [SerializeField] private CameraBufferSettings cameraBufferSettings = new CameraBufferSettings() {
             allowHDR = true,
             renderScale = 1f,
+            targetMSAA = MSAASamples.None,
         };
         [SerializeField] private PostProcessSettings postProcessSettings = default;
 
