@@ -74,11 +74,53 @@ float DistanceSquare (float3 x, float3 y) {
 }
 
 float3 DecodeNormal (float4 sample, float scale) {
-    #if defined(UNITY_NO_DXT5nm)
+#if defined(UNITY_NO_DXT5nm)
     return UnpackNormalRGB(sample, scale);
-    #else
+#else
     return UnpackNormalmapRGorAG(sample, scale);
-    #endif
+ #endif
+}
+
+// step(a, x)	    Returns (x >= a) ? 1 : 0
+// sin(x)	        Returns the sine of x
+// lerp(x, y, s)	Returns x + s(y - x).
+
+// https://zhuanlan.zhihu.com/p/612263535
+// 例子：if (x >= 3) { y += 5; }
+// y += (5 * WhenGreaterEqual(x, 3));
+// 大于等于返回1，否则返回0
+float WhenGreaterEqual(float x, float target) {
+    return step(x, target);
+}
+
+float WhenLessEqual(float x, float target) {
+    return step(target, x);
+}
+
+// 例子：if (x == 3) { y += 5; }
+// y += (5 * WhenEqual(x, 3));
+// 
+// 例子：if (x == 3) { b = a1; } else { b = a2; }
+// b = lerp(a2, a1, WhenEqual(x, 3));
+// 
+// 等于返回1，否则返回0
+float WhenEqual(float x, float target) {
+    return 1.0 - abs(sign(x - target));
+}
+
+// 不等于返回1，否则返回0
+float WhenNotEqual(float x, float target) {
+    return abs(sign(x - target));
+}
+
+// 大于返回1，否则0
+float WhenGreater(float x, float target) {
+    return max(sign(x - target), 0.0);
+}
+
+// 小于返回1，否则0
+float WhenLesser(float x, float target) {
+    return max(sign(target - x), 0.0);
 }
 
 #endif
