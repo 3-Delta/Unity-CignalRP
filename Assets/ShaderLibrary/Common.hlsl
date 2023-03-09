@@ -123,4 +123,8 @@ float WhenLesser(float x, float target) {
     return max(sign(target - x), 0.0);
 }
 
+// SV_DispatchThreadID就是当前线程对应的整张texture中的像素位置
+// https://zhuanlan.zhihu.com/p/368307575
+#define CSKERNAL_ARGS uint3 groupId : SV_GroupID, uint3 groupThreadId : SV_GroupThreadID, uint3 dispatchThreadId : SV_DispatchThreadID, uint groupIndex : SV_GroupIndex
+
 #endif
