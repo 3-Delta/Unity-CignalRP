@@ -127,4 +127,13 @@ float WhenLesser(float x, float target) {
 // https://zhuanlan.zhihu.com/p/368307575
 #define CSKERNAL_ARGS uint3 groupId : SV_GroupID, uint3 groupThreadId : SV_GroupThreadID, uint3 dispatchThreadId : SV_DispatchThreadID, uint groupIndex : SV_GroupIndex
 
+// 按照到相机的距离，决定做逐顶点光照，还是逐像素光照。这个判断肯定要在顶点着色器中执行
+// q: 按照哪个顶点决定呢？
+// 顶点是距离相机的距离是否在阈值之内
+float InCameraDistance(float3 vertPosWS, float THRESHOLD)
+{
+    float dist = distance(vertPosWS, _WorldSpaceCameraPos);
+    return WhenLesser(dist, THRESHOLD);
+}
+
 #endif

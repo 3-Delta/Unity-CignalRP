@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Assertions.Must;
@@ -234,6 +235,10 @@ namespace CignalRP {
 
             CmdBufferExt.ProfileSample(ref context, cmdBuffer, EProfileStep.End, cameraProfileName);
 
+            if (RenderCamera.Instance != null) {
+                RenderCamera.Instance.Set(this, cullingResults);
+            }
+            
             // submit之后才会开始绘制本桢
             this.context.Submit();
         }
